@@ -12,7 +12,7 @@
 
 ## 📌 Overview
 
-**Jarvis Antigravity Agent** is a full-stack, autonomous AI system designed for software engineers, systems programmers, and machine learning researchers. 
+**Jarvis Antigravity Agent** is a full-stack, autonomous AI system designed for software engineers, systems programmers, and machine learning researchers.
 
 Instead of incurring ongoing per-token API costs from third-party commercial LLM providers, this architecture connects the local terminal power of **Google Antigravity CLI (`agy`)** to a mobile **Telegram** interface via an outbound HTTPS long-polling daemon.
 

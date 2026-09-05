@@ -12,6 +12,7 @@ state.json
 *.db-shm
 *.db-wal
 *.lock
+!uv.lock
 
 # Python cache & virtual environments
 __pycache__/
