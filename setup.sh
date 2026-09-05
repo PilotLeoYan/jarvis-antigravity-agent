@@ -14,25 +14,27 @@ command -v python3 >/dev/null 2>&1 || { echo >&2 "[-] Error: python3 is required
 command -v ffmpeg >/dev/null 2>&1 || { echo >&2 "[-] Warning: ffmpeg is not installed. Voice note processing requires ffmpeg (sudo apt install ffmpeg)."; }
 command -v agy >/dev/null 2>&1 || { echo >&2 "[*] Note: Google Antigravity CLI ('agy') not found in PATH. Ensure it is installed in ~/.local/bin or specify its absolute path in config.json."; }
 
-# 2. Virtual Environment
-if [ ! -d "venv" ]; then
-    echo "[+] Creating Python virtual environment (venv)..."
-    python3 -m venv venv
+# 2. Install package with uv (preferred) or fallback to pip venv
+if command -v uv >/dev/null 2>&1; then
+    echo "[+] Installing package with uv..."
+    uv sync
+    echo "[+] Package installed. Entrypoints available: jarvis-antigravity-agent, jarvis-send-message"
 else
-    echo "[+] Virtual environment already exists."
+    echo "[+] uv not found — falling back to pip venv..."
+    if [ ! -d "venv" ]; then
+        python3 -m venv venv
+    fi
+    ./venv/bin/pip install --upgrade pip
+    ./venv/bin/pip install -e .
 fi
 
-echo "[+] Installing dependencies..."
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
-
 # 3. Configuration Scaffolding
-if [ ! -f "bridge/config.json" ]; then
-    echo "[+] Creating bridge/config.json from template..."
-    cp bridge/config.example.json bridge/config.json
-    echo "[*] Remember to edit bridge/config.json with your Telegram Bot Token and User ID."
+if [ ! -f "config.json" ]; then
+    echo "[+] Creating config.json from template..."
+    cp config.example.json config.json
+    echo "[*] Remember to edit config.json with your Telegram Bot Token and User ID."
 else
-    echo "[+] Configuration file bridge/config.json exists."
+    echo "[+] Configuration file config.json already exists."
 fi
 
 # 4. Cognitive Setup
@@ -53,7 +55,7 @@ for skill in skills/*; do
         target="$AGENT_SKILLS_DIR/$sname"
         if [ ! -e "$target" ]; then
             ln -s "$SCRIPT_DIR/$skill" "$target"
-            echo "    -> Linked skill: $sname"
+            echo "    Linked skill: $sname"
         fi
     fi
 done
@@ -62,7 +64,7 @@ echo ""
 echo "=========================================================="
 echo "   Setup Complete!"
 echo "   To start manually:"
-echo "     ./venv/bin/python bridge/bot.py"
+echo "     jarvis-antigravity-agent"
 echo ""
 echo "   To install as a systemd user daemon:"
 echo "     mkdir -p ~/.config/systemd/user"

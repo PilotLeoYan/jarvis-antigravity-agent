@@ -8,7 +8,7 @@ Type=simple
 WorkingDirectory=%h
 Environment="PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="HOME=%h"
-ExecStart=%h/projects/jarvis-antigravity-agent/venv/bin/python %h/projects/jarvis-antigravity-agent/bridge/bot.py
+ExecStart=%h/.local/bin/jarvis-antigravity-agent
 Restart=always
 RestartSec=5
 StandardOutput=journal
