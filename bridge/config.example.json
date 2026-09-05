@@ -1,0 +1,10 @@
+{
+  "bot_token": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
+  "allowed_users": [123456789],
+  "default_chat_id": 123456789,
+  "working_directory": "/home/username",
+  "agy_path": "agy",
+  "default_flags": [
+    "--dangerously-skip-permissions"
+  ]
+}
