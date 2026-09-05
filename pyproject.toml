@@ -1,7 +1,7 @@
 [project]
 name = "jarvis-antigravity-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Autonomous AI engineering assistant powered by Google Antigravity CLI with Telegram bridge and offline speech-to-text"
 readme = "README.md"
 authors = [
     { name = "PilotLeoYan", email = "leofabyan@gmail.com" }
@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 jarvis-antigravity-agent = "jarvis_antigravity_agent:main"
+jarvis-send-message = "jarvis_antigravity_agent.notifier:main"
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]
