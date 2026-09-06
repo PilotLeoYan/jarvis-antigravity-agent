@@ -44,9 +44,10 @@ class TestBuildRuntimeConfig:
         cfg = build_runtime_config({"default_flags": ["--my-flag"]})
         assert cfg["default_flags"] == ["--my-flag"]
 
-    def test_working_dir_from_config(self):
-        cfg = build_runtime_config({"working_directory": "/tmp/test"})
-        assert cfg["working_dir"] == "/tmp/test"
+    def test_working_dir_from_config(self, tmp_path):
+        test_dir = str(tmp_path / "test")
+        cfg = build_runtime_config({"working_directory": test_dir})
+        assert cfg["working_dir"] == test_dir
 
 
 class TestLoadState:

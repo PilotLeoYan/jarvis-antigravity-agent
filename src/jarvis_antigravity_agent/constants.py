@@ -35,7 +35,7 @@ class Constants:
     STATE_PATH = os.path.join(BASE_DIR, "state.json")
     LOGGER_NAME = "jarvis-bridge"
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    PLACEHOLDER_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+    PLACEHOLDER_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE"  # noqa: S105
     DEFAULT_WORKING_DIR = os.path.expanduser("~")
     STATE_KEY_CONTINUE = "continue_session"
     EMPTY_RESPONSE_PLACEHOLDER = "(Empty response)"

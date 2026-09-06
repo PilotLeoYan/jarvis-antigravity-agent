@@ -27,8 +27,8 @@ def load_state() -> dict[str, Any]:
             with open(Constants.STATE_PATH, encoding="utf-8") as f:
                 result: dict[str, Any] = json.load(f)
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to load state: %s", e)
     return {Constants.STATE_KEY_CONTINUE: False}
 
 
