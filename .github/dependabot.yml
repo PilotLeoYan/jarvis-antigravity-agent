@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Monitoring Python Modules
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    # Group development teams to prevent an overload of PRs
+    groups:
+      dev-dependencies:
+        patterns:
+          - "ruff*"
+          - "mypy*"
+          - "pytest*"
+
+  # Monitoring GitHub Actions Versions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci(actions)"
+    labels:
+      - "ci"
+      - "dependencies"
