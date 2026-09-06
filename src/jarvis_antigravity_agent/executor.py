@@ -45,7 +45,8 @@ async def _process_stream(
     status_msg: Message | None,
     step_items: list[str],
 ) -> tuple[str, str, list[str], list[str]]:
-    assert process.stdout is not None
+    if process.stdout is None:
+        raise RuntimeError("Process stdout stream is not available")
 
     final_response_text = ""
     current_step_text: dict[int, str] = {}
@@ -112,8 +113,8 @@ async def _process_stream(
                             Messages.TASK_PROGRESS + "\n".join(display),
                             parse_mode=constants.ParseMode.MARKDOWN,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Failed to edit task progress message: %s", e)
 
         elif ev == "result":
             final_response_text = str(
@@ -183,8 +184,8 @@ async def execute_agy_prompt(
                 status_msg = await update.message.reply_text(
                     Messages.STARTING_TASK, parse_mode=constants.ParseMode.MARKDOWN
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to send starting task message: %s", e)
 
         start_time = time.time()
         logger.info(
@@ -229,8 +230,8 @@ async def execute_agy_prompt(
                         await status_msg.edit_text(
                             timeout_msg, parse_mode=constants.ParseMode.MARKDOWN
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Failed to edit timeout message: %s", e)
                 elif update.message is not None:
                     await update.message.reply_text(
                         Messages.TIMEOUT_EXCEEDED.format(
@@ -256,8 +257,8 @@ async def execute_agy_prompt(
                     await status_msg.edit_text(
                         final_status, parse_mode=constants.ParseMode.MARKDOWN
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to edit final status message: %s", e)
 
             err_text = (
                 stderr.decode("utf-8", errors="replace").strip() if stderr else ""
@@ -314,23 +315,23 @@ async def execute_agy_prompt(
             if current_process and current_process.returncode is None:
                 try:
                     current_process.kill()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to kill process on cancel: %s", e)
             restart_notice = Messages.RELOADING_GENERAL
             if status_msg is not None:
                 try:
                     await status_msg.edit_text(
                         restart_notice, parse_mode=constants.ParseMode.MARKDOWN
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to edit restart notice: %s", e)
             elif update.message is not None:
                 try:
                     await update.message.reply_text(
                         restart_notice, parse_mode=constants.ParseMode.MARKDOWN
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to send restart notice: %s", e)
             raise
 
         except Exception as e:

@@ -1,9 +1,12 @@
 import asyncio
+import logging
 
 from telegram import Message, Update, constants
 from telegram.ext import ContextTypes
 
 from jarvis_antigravity_agent.constants import Constants
+
+logger = logging.getLogger(Constants.LOGGER_NAME)
 
 
 def split_message(
@@ -53,8 +56,8 @@ async def keep_typing(
             await context.bot.send_chat_action(
                 chat_id=chat_id, action=constants.ChatAction.TYPING
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to send typing chat action: %s", e)
         try:
             await asyncio.wait_for(
                 stop_event.wait(), timeout=Constants.TYPING_WAIT_TIMEOUT

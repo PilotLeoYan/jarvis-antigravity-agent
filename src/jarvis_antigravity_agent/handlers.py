@@ -112,8 +112,8 @@ class BotHandlers:
             if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to remove temporary voice file: %s", e)
 
     async def help_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -174,8 +174,8 @@ class BotHandlers:
                 f"{(used / total) * 100:.1f}% "
                 f"({used // (1024**3)}GB / {total // (1024**3)}GB)"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to inspect system metrics: %s", e)
 
         msg = Messages.SYSTEM_STATUS.format(
             agy_status=agy_status,

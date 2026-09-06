@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sys
 import urllib.error
@@ -9,6 +10,8 @@ from jarvis_antigravity_agent.constants import Constants
 from jarvis_antigravity_agent.messages import Messages
 from jarvis_antigravity_agent.utils import split_message
 
+logger = logging.getLogger(Constants.LOGGER_NAME)
+
 
 def load_notifier_config() -> dict[str, Any]:
     if os.path.exists(Constants.CONFIG_PATH):
@@ -16,25 +19,27 @@ def load_notifier_config() -> dict[str, Any]:
             with open(Constants.CONFIG_PATH, encoding="utf-8") as f:
                 result: dict[str, Any] = json.load(f)
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to load notifier config: %s", e)
     return {}
 
 
 def send_telegram_chunk(bot_token: str, chat_id: int | str, chunk: str) -> bool:
     url = Constants.TELEGRAM_API_SEND_URL.format(bot_token=bot_token)
+    if not url.startswith(("http:", "https:")):
+        raise ValueError(f"Unsupported URL scheme in {url}")
     payload: dict[str, Any] = {
         "chat_id": chat_id,
         "text": chunk,
         "parse_mode": "Markdown",
     }
     data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310
         url, data=data, headers={"Content-Type": "application/json"}
     )
 
     try:
-        with urllib.request.urlopen(
+        with urllib.request.urlopen(  # noqa: S310
             req, timeout=Constants.TELEGRAM_REQ_TIMEOUT
         ) as resp:
             ok: bool = resp.status == 200
@@ -42,11 +47,11 @@ def send_telegram_chunk(bot_token: str, chat_id: int | str, chunk: str) -> bool:
     except urllib.error.HTTPError:
         payload.pop("parse_mode", None)
         data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310
             url, data=data, headers={"Content-Type": "application/json"}
         )
         try:
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # noqa: S310
                 req, timeout=Constants.TELEGRAM_REQ_TIMEOUT
             ) as resp:
                 ok = resp.status == 200

@@ -66,12 +66,12 @@ class Messages:
     ERROR_CANCELLING = "\u26a0\ufe0f Error cancelling task: {error}"
     NO_ACTIVE_TASK = "\u2139\ufe0f No active task is currently running."
     MISSING_BOT_TOKEN = (
-        "Please configure a valid Telegram Bot Token "
+        "Please configure a valid Telegram Bot Token "  # noqa: S105
         "in config.json or TELEGRAM_BOT_TOKEN."
     )
 
     NOTIFIER_MISSING_TOKEN = (
-        "Error: Missing bot_token in config.json or TELEGRAM_BOT_TOKEN "
+        "Error: Missing bot_token in config.json or TELEGRAM_BOT_TOKEN "  # noqa: S105
         "environment variable."
     )
     NOTIFIER_USAGE = (
