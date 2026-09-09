@@ -1,0 +1,83 @@
+# ==============================================================================
+# Jarvis Antigravity Agent - Configuration Template
+# Inspired by Hermes-Agent architecture, powered by Google Antigravity CLI (agy)
+# ==============================================================================
+
+# Telegram Bot & Bridge Configuration
+telegram:
+  # Telegram Bot Token obtained from @BotFather
+  # Can also be set via TELEGRAM_BOT_TOKEN environment variable.
+  bot_token: "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+
+  # Authorized Telegram user IDs (integers or strings).
+  # If left empty ([]), access will be unrestricted (not recommended for production).
+  allowed_users:
+    - 123456789
+
+  # Default Chat ID used by CLI notifier (jarvis-send-message).
+  # Can also be set via TELEGRAM_CHAT_ID environment variable.
+  default_chat_id: 123456789
+
+  # HTTP request timeout in seconds for direct Telegram Bot API requests.
+  request_timeout: 20.0
+
+  # Maximum length of Telegram message chunks (Telegram limit is 4096).
+  max_message_length: 4000
+
+  # Interval in seconds to refresh the Telegram "typing" chat action indicator.
+  typing_wait_timeout: 4.5
+
+# Google Antigravity CLI (agy) Execution Engine Configuration
+agy:
+  # Working directory where the agent runs commands and tool operations.
+  # Defaults to the user's home directory.
+  working_dir: "/home/username"
+
+  # Path or name of the agy binary.
+  # If in PATH, "agy" is sufficient; otherwise specify an absolute path.
+  agy_path: "agy"
+
+  # Default CLI flags passed to agy.
+  # --dangerously-skip-permissions enables autonomous execution.
+  default_flags:
+    - "--dangerously-skip-permissions"
+
+  # Maximum process execution timeout in seconds before aborting.
+  process_timeout: 360.0
+
+  # Subprocess communication timeout in seconds.
+  communicate_timeout: 10.0
+
+  # Throttle interval in seconds between streaming status message edits in Telegram.
+  edit_throttle_seconds: 1.2
+
+  # Maximum active progress items displayed during task execution.
+  max_status_items: 12
+
+  # Maximum completed progress items displayed upon completion.
+  max_completed_items: 15
+
+# Local Offline Speech-to-Text Configuration (faster-whisper)
+whisper:
+  # Whisper model size: "tiny", "base", "small", "medium", "large-v3"
+  model_size: "base"
+
+  # Device: "cpu" or "cuda"
+  device: "cpu"
+
+  # Compute type: "int8", "float16", "default"
+  compute_type: "int8"
+
+  # Beam size for decoding
+  beam_size: 5
+
+# Storage & System Settings
+system:
+  # Path to the state persistence file (JSON format)
+  state_path: "state.json"
+
+  # Logger name
+  logger_name: "jarvis-bridge"
+
+  # Logging level: "DEBUG", "INFO", "WARNING", "ERROR"
+  log_level: "INFO"
