@@ -181,6 +181,24 @@ class TestPydanticSettings:
         found = find_config_path()
         assert found == cfg_file
 
+    def test_find_config_path_tilde_expansion(self, tmp_path, monkeypatch):
+        fake_home = tmp_path / "fake_home"
+        fake_home.mkdir()
+        cfg_file = fake_home / "custom.yaml"
+        cfg_file.touch()
+
+        monkeypatch.setenv("HOME", str(fake_home))
+        monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+
+        # Explicit path with ~
+        found = find_config_path("~/custom.yaml")
+        assert found == cfg_file
+
+        # Environment variable with ~
+        monkeypatch.setenv("JARVIS_CONFIG_PATH", "~/custom.yaml")
+        found_env = find_config_path()
+        assert found_env == cfg_file
+
     def test_load_config_helper(self, tmp_path, monkeypatch):
         yaml_content = {"telegram": {"bot_token": "load_cfg_test"}}
         f = tmp_path / "config.yaml"
@@ -189,6 +207,23 @@ class TestPydanticSettings:
 
         cfg = load_config()
         assert cfg["telegram"]["bot_token"] == "load_cfg_test"
+
+    def test_load_settings_explicit_file_isolated(self, tmp_path, monkeypatch):
+        # Global config file on disk
+        global_cfg = tmp_path / "global_config.yaml"
+        global_cfg.write_text(
+            yaml.dump({"telegram": {"bot_token": "global_tok", "default_chat_id": 111}})
+        )
+        monkeypatch.setenv("JARVIS_CONFIG_PATH", str(global_cfg))
+
+        # Explicit config file with different token and no chat id
+        isolated_cfg = tmp_path / "isolated.yaml"
+        isolated_cfg.write_text(yaml.dump({"telegram": {"bot_token": "isolated_tok"}}))
+
+        loaded = load_settings(str(isolated_cfg))
+        assert loaded.bot_token == "isolated_tok"
+        # Should NOT inherit default_chat_id from global_config.yaml
+        assert loaded.default_chat_id is None
 
 
 class TestStateManagement:

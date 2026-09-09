@@ -33,14 +33,14 @@ def find_config_path(explicit_path: str | Path | None = None) -> Path | None:
     6. config.json in current dir or base dir
     """
     if explicit_path is not None:
-        p = Path(explicit_path)
+        p = Path(explicit_path).expanduser()
         if p.is_file():
             return p
 
     for env_var in ("JARVIS_CONFIG_PATH", "AGY_TELEGRAM_CONFIG"):
         val = os.environ.get(env_var)
         if val:
-            p = Path(val)
+            p = Path(val).expanduser()
             if p.is_file():
                 return p
 
@@ -273,7 +273,7 @@ _global_settings: Settings | None = None
 def load_settings(config_path: str | Path | None = None, **overrides: Any) -> Settings:
     """Load settings from a specific file path or dynamically."""
     if config_path is not None:
-        p = Path(config_path)
+        p = Path(config_path).expanduser()
         if p.is_file():
             with open(p, encoding="utf-8") as f:
                 if p.suffix.lower() in {".yaml", ".yml"}:
@@ -281,6 +281,7 @@ def load_settings(config_path: str | Path | None = None, **overrides: Any) -> Se
                 else:
                     raw_data = json.load(f) or {}
             raw_data.update(overrides)
+            raw_data["_ignore_config_file"] = True
             return Settings(**raw_data)
     return Settings(**overrides)
 

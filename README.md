@@ -190,13 +190,17 @@ If `agy-telegram.service` exits with `code=exited, status=203/EXEC`:
 agy-telegram.service: Failed to locate executable ~/.local/bin/jarvis-antigravity-agent: No such file or directory
 agy-telegram.service: Failed at step EXEC spawning ~/.local/bin/jarvis-antigravity-agent: No such file or directory
 ```
-This indicates the executable link in `~/.local/bin/` is missing. Fix it by running:
+This indicates the executable link in `~/.local/bin/` is missing or unlinked. Fix it by running:
 ```bash
 ./setup.sh
 # or
 make install
 ```
-Ensure `~/.local/bin/jarvis-antigravity-agent` exists and has executable permissions (`chmod +x`).
+Both `./setup.sh` and `make install` automatically:
+1. Synchronize project dependencies into the virtual environment (`.venv/bin`).
+2. Symlink all CLI entrypoints into `~/.local/bin/` and apply executable permissions (`chmod +x`).
+3. Deploy `systemd/agy-telegram.service` to `~/.config/systemd/user/agy-telegram.service` with start burst rate limiting (`StartLimitIntervalSec=300`, `StartLimitBurst=5`) and `RestartPreventExitStatus=203` to prevent runaway restart loops if the executable is ever missing.
+4. Reload the user systemd daemon (`systemctl --user daemon-reload`).
 
 ---
 

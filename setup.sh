@@ -68,6 +68,12 @@ if [ ! -d "$VENV_BIN_DIR" ]; then
     VENV_BIN_DIR="$SCRIPT_DIR/venv/bin"
 fi
 
+if [ ! -d "$VENV_BIN_DIR" ]; then
+    echo >&2 "[-] Error: Virtual environment binary directory not found at $VENV_BIN_DIR."
+    echo >&2 "    Please verify that package installation in Step 2 succeeded."
+    exit 1
+fi
+
 ENTRYPOINTS=(
     "jarvis-antigravity-agent"
     "jarvis-send-message"
@@ -83,8 +89,17 @@ for ep in "${ENTRYPOINTS[@]}"; do
         ln -sf "$VENV_BIN_DIR/$ep" "$USER_BIN_DIR/$ep"
         chmod +x "$USER_BIN_DIR/$ep" 2>/dev/null || true
         echo "    Linked binary: $ep -> $USER_BIN_DIR/$ep"
+    else
+        echo >&2 "    [-] Warning: Entrypoint $ep not found in $VENV_BIN_DIR"
     fi
 done
+
+# Ensure core daemon executable is verified before systemd setup
+if [ ! -x "$USER_BIN_DIR/jarvis-antigravity-agent" ]; then
+    echo >&2 "[-] Fatal Error: $USER_BIN_DIR/jarvis-antigravity-agent is missing or not executable."
+    echo >&2 "    Cannot proceed with systemd service installation (would cause status 203/EXEC)."
+    exit 1
+fi
 
 # 7. Systemd Service Deployment
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
@@ -92,6 +107,7 @@ mkdir -p "$SYSTEMD_USER_DIR"
 if [ -f "$SCRIPT_DIR/systemd/agy-telegram.service" ]; then
     echo "[+] Deploying systemd user service template to $SYSTEMD_USER_DIR/agy-telegram.service..."
     cp "$SCRIPT_DIR/systemd/agy-telegram.service" "$SYSTEMD_USER_DIR/agy-telegram.service"
+    chmod 644 "$SYSTEMD_USER_DIR/agy-telegram.service" 2>/dev/null || true
     if command -v systemctl >/dev/null 2>&1; then
         systemctl --user daemon-reload 2>/dev/null || true
     fi

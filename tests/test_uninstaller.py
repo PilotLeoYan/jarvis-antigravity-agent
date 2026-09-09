@@ -6,6 +6,7 @@ import pytest
 from jarvis_antigravity_agent.handlers import BotHandlers
 from jarvis_antigravity_agent.messages import Messages
 from jarvis_antigravity_agent.uninstaller import (
+    link_project_binaries,
     main_cli,
     perform_uninstall,
     purge_agy_data,
@@ -77,7 +78,8 @@ class TestUninstaller:
         repo_bin.mkdir(parents=True)
         (repo_bin / "jarvis-antigravity-agent").write_text("#!/usr/bin/env python3")
 
-        other_repo = tmp_path / "other_repo" / "bin"
+        # Sibling directory that starts with the same string prefix "jarvis_repo"
+        other_repo = tmp_path / "jarvis_repo_other" / "bin"
         other_repo.mkdir(parents=True)
         (other_repo / "jarvis-mcp").write_text("#!/usr/bin/env python3")
 
@@ -104,6 +106,7 @@ class TestUninstaller:
         assert link_mine.exists()
 
         # Actual run removes repo link but preserves other
+        # (preventing prefix collisions)
         removed = unlink_project_binaries(
             project_dir=repo_dir,
             bin_dir=target_bin_dir,
@@ -112,6 +115,35 @@ class TestUninstaller:
         assert "jarvis-antigravity-agent" in removed
         assert not link_mine.exists()
         assert link_other.exists()
+
+    def test_link_project_binaries(self, tmp_path: Path):
+        repo_dir = tmp_path / "jarvis_repo"
+        repo_bin = repo_dir / ".venv" / "bin"
+        repo_bin.mkdir(parents=True)
+        (repo_bin / "jarvis-antigravity-agent").write_text("#!/usr/bin/env python3")
+        (repo_bin / "jarvis-send-message").write_text("#!/usr/bin/env python3")
+
+        target_bin_dir = tmp_path / "local_bin"
+
+        # Nonexistent venv returns empty list
+        assert link_project_binaries(project_dir=tmp_path / "nonexistent") == []
+
+        # Successful linking
+        linked = link_project_binaries(
+            project_dir=repo_dir,
+            bin_dir=target_bin_dir,
+        )
+        assert "jarvis-antigravity-agent" in linked
+        assert "jarvis-send-message" in linked
+        assert (target_bin_dir / "jarvis-antigravity-agent").is_symlink()
+        assert (target_bin_dir / "jarvis-send-message").is_symlink()
+
+        # Idempotent re-linking
+        relinked = link_project_binaries(
+            project_dir=repo_dir,
+            bin_dir=target_bin_dir,
+        )
+        assert "jarvis-antigravity-agent" in relinked
 
     def test_purge_personal_data(self, tmp_path: Path):
         config_f = tmp_path / "config.yaml"
