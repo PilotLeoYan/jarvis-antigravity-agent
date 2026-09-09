@@ -11,6 +11,7 @@ from jarvis_antigravity_agent.uninstaller import (
     purge_agy_data,
     purge_personal_data,
     stop_and_disable_service,
+    unlink_project_binaries,
     unlink_project_skills,
 )
 
@@ -67,6 +68,48 @@ class TestUninstaller:
         )
 
         assert "custom_skill" in removed
+        assert not link_mine.exists()
+        assert link_other.exists()
+
+    def test_unlink_project_binaries(self, tmp_path: Path):
+        repo_dir = tmp_path / "jarvis_repo"
+        repo_bin = repo_dir / ".venv" / "bin"
+        repo_bin.mkdir(parents=True)
+        (repo_bin / "jarvis-antigravity-agent").write_text("#!/usr/bin/env python3")
+
+        other_repo = tmp_path / "other_repo" / "bin"
+        other_repo.mkdir(parents=True)
+        (other_repo / "jarvis-mcp").write_text("#!/usr/bin/env python3")
+
+        target_bin_dir = tmp_path / "local_bin"
+        target_bin_dir.mkdir()
+
+        # Create symlinks
+        link_mine = target_bin_dir / "jarvis-antigravity-agent"
+        link_mine.symlink_to(repo_bin / "jarvis-antigravity-agent")
+
+        link_other = target_bin_dir / "jarvis-mcp"
+        link_other.symlink_to(other_repo / "jarvis-mcp")
+
+        # Nonexistent dir returns empty
+        assert unlink_project_binaries(bin_dir=tmp_path / "nonexistent") == []
+
+        # Dry run does not remove
+        dry_removed = unlink_project_binaries(
+            project_dir=repo_dir,
+            bin_dir=target_bin_dir,
+            dry_run=True,
+        )
+        assert "jarvis-antigravity-agent" in dry_removed
+        assert link_mine.exists()
+
+        # Actual run removes repo link but preserves other
+        removed = unlink_project_binaries(
+            project_dir=repo_dir,
+            bin_dir=target_bin_dir,
+            dry_run=False,
+        )
+        assert "jarvis-antigravity-agent" in removed
         assert not link_mine.exists()
         assert link_other.exists()
 
@@ -159,6 +202,7 @@ class TestUninstaller:
                 project_dir=tmp_path,
             )
             assert results["service_stopped"] is True
+            assert "binaries_unlinked" in results
             mock_svc.assert_called_once()
 
     @pytest.mark.anyio

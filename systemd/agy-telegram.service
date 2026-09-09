@@ -11,6 +11,7 @@ Environment="HOME=%h"
 ExecStart=%h/.local/bin/jarvis-antigravity-agent
 Restart=always
 RestartSec=5
+RestartPreventExitStatus=203
 StandardOutput=journal
 StandardError=journal
 
