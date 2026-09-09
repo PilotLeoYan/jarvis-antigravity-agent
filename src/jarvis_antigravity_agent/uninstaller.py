@@ -131,7 +131,7 @@ def unlink_project_skills(
     skills_target_dir: str | list[str] | None = None,
     dry_run: bool = False,
 ) -> list[str]:
-    """Remove symlinks pointing to this project repository across global skill dirs."""
+    """Remove project symlinks or copied directories from global skill dirs."""
     base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
     if skills_target_dir is None:
         target_dirs = [
@@ -144,13 +144,14 @@ def unlink_project_skills(
         target_dirs = [os.path.expanduser(d) for d in skills_target_dir]
 
     unlinked: list[str] = []
+    repo_skills = base_dir / "skills"
 
     for s_dir in target_dirs:
         target_skills = Path(s_dir)
         if not target_skills.is_dir():
             continue
 
-        for item in target_skills.iterdir():
+        for item in sorted(target_skills.iterdir()):
             if item.is_symlink():
                 try:
                     resolved = item.resolve()
@@ -166,6 +167,17 @@ def unlink_project_skills(
                         unlinked.append(item.name)
                 except Exception as e:
                     logger.debug("Failed checking symlink %s: %s", item, e)
+            elif item.is_dir() and repo_skills.is_dir():
+                try:
+                    if (repo_skills / item.name).is_dir():
+                        if dry_run:
+                            print(f"[dry-run] Would remove skill directory: {item}")
+                        else:
+                            shutil.rmtree(item)
+                            print(f"[+] Removed skill directory: {item.name}")
+                        unlinked.append(item.name)
+                except Exception as e:
+                    logger.debug("Failed checking skill directory %s: %s", item, e)
 
     return unlinked
 
@@ -234,6 +246,48 @@ def link_project_binaries(
                 logger.debug("Failed creating symlink %s -> %s: %s", dst, src, e)
 
     return linked
+
+
+def copy_project_skills(
+    project_dir: Path | str | None = None,
+    skills_target_dirs: list[str] | None = None,
+) -> list[str]:
+    """Copy custom skills from repository to standard AGY user skills locations."""
+    base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
+    repo_skills = base_dir / "skills"
+    if not repo_skills.is_dir():
+        return []
+
+    target_dirs = (
+        [os.path.expanduser(d) for d in skills_target_dirs]
+        if skills_target_dirs is not None
+        else [
+            os.path.expanduser("~/.gemini/config/skills"),
+            os.path.expanduser("~/.agents/skills"),
+        ]
+    )
+
+    copied: list[str] = []
+    for s_dir in target_dirs:
+        target_path = Path(s_dir)
+        target_path.mkdir(parents=True, exist_ok=True)
+        for skill_dir in sorted(repo_skills.iterdir()):
+            if skill_dir.is_dir():
+                dest = target_path / skill_dir.name
+                try:
+                    if dest.is_symlink() or dest.is_file():
+                        dest.unlink()
+                    elif dest.is_dir():
+                        shutil.rmtree(dest)
+                    shutil.copytree(skill_dir, dest)
+                    if skill_dir.name not in copied:
+                        copied.append(skill_dir.name)
+                except Exception as e:
+                    logger.debug(
+                        "Failed copying skill %s -> %s: %s", skill_dir, dest, e
+                    )
+
+    return copied
 
 
 def purge_personal_data(

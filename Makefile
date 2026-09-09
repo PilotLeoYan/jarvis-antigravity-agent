@@ -30,4 +30,14 @@ install:
 	ln -sf $(CURDIR)/.venv/bin/jarvis-uninstall $(HOME)/.local/bin/jarvis-uninstall
 	mkdir -p $(HOME)/.config/systemd/user
 	cp $(CURDIR)/systemd/agy-telegram.service $(HOME)/.config/systemd/user/agy-telegram.service
+	mkdir -p $(HOME)/.gemini/config/skills $(HOME)/.agents/skills
+	for skill in $(CURDIR)/skills/*; do \
+		if [ -d "$$skill" ]; then \
+			sname=$$(basename "$$skill"); \
+			rm -rf "$(HOME)/.gemini/config/skills/$$sname"; \
+			cp -r "$$skill" "$(HOME)/.gemini/config/skills/$$sname"; \
+			rm -rf "$(HOME)/.agents/skills/$$sname"; \
+			cp -r "$$skill" "$(HOME)/.agents/skills/$$sname"; \
+		fi \
+	done
 	command -v systemctl >/dev/null 2>&1 && systemctl --user daemon-reload 2>/dev/null || true

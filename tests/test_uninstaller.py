@@ -6,6 +6,7 @@ import pytest
 from jarvis_antigravity_agent.handlers import BotHandlers
 from jarvis_antigravity_agent.messages import Messages
 from jarvis_antigravity_agent.uninstaller import (
+    copy_project_skills,
     link_project_binaries,
     main_cli,
     perform_uninstall,
@@ -71,6 +72,90 @@ class TestUninstaller:
         assert "custom_skill" in removed
         assert not link_mine.exists()
         assert link_other.exists()
+
+    def test_unlink_project_skills_copied_directory(self, tmp_path: Path):
+        repo_dir = tmp_path / "my_repo"
+        repo_skills = repo_dir / "skills" / "telegram-formatting"
+        repo_skills.mkdir(parents=True)
+        (repo_skills / "SKILL.md").write_text("---\nname: telegram-formatting\n---\n")
+
+        target_dir = tmp_path / "gemini_skills"
+        target_dir.mkdir()
+
+        # Copied skill from this repo
+        copied_skill = target_dir / "telegram-formatting"
+        copied_skill.mkdir()
+        (copied_skill / "SKILL.md").write_text("---\nname: telegram-formatting\n---\n")
+
+        # Other unrelated skill in the same target dir
+        unrelated_skill = target_dir / "find-skills"
+        unrelated_skill.mkdir()
+        (unrelated_skill / "SKILL.md").write_text("---\nname: find-skills\n---\n")
+
+        # Dry run does not remove
+        dry_removed = unlink_project_skills(
+            project_dir=repo_dir,
+            skills_target_dir=str(target_dir),
+            dry_run=True,
+        )
+        assert "telegram-formatting" in dry_removed
+        assert copied_skill.exists()
+        assert unrelated_skill.exists()
+
+        # Actual run removes only project skill directory
+        removed = unlink_project_skills(
+            project_dir=repo_dir,
+            skills_target_dir=str(target_dir),
+            dry_run=False,
+        )
+        assert "telegram-formatting" in removed
+        assert not copied_skill.exists()
+        assert unrelated_skill.exists()
+
+    def test_copy_project_skills_success(self, tmp_path: Path):
+        repo_dir = tmp_path / "jarvis_repo"
+        (repo_dir / "skills" / "telegram-formatting").mkdir(parents=True)
+        (repo_dir / "skills" / "telegram-formatting" / "SKILL.md").write_text(
+            "---\nname: telegram-formatting\n---\n"
+        )
+        (repo_dir / "skills" / "agy-cli").mkdir(parents=True)
+        (repo_dir / "skills" / "agy-cli" / "SKILL.md").write_text(
+            "---\nname: agy-cli\n---\n"
+        )
+
+        target1 = tmp_path / "target1"
+        target2 = tmp_path / "target2"
+        target1.mkdir()
+        target2.mkdir()
+
+        # Pre-create an obsolete symlink in target1 to verify overwrite
+        dummy_dir = tmp_path / "dummy"
+        dummy_dir.mkdir()
+        (target1 / "telegram-formatting").symlink_to(dummy_dir)
+
+        copied = copy_project_skills(
+            project_dir=repo_dir,
+            skills_target_dirs=[str(target1), str(target2)],
+        )
+
+        assert "telegram-formatting" in copied
+        assert "agy-cli" in copied
+
+        # Verify target1
+        assert (target1 / "telegram-formatting").is_dir()
+        assert not (target1 / "telegram-formatting").is_symlink()
+        assert (target1 / "telegram-formatting" / "SKILL.md").exists()
+        assert (target1 / "agy-cli" / "SKILL.md").exists()
+
+        # Verify target2
+        assert (target2 / "telegram-formatting" / "SKILL.md").exists()
+        assert (target2 / "agy-cli" / "SKILL.md").exists()
+
+    def test_copy_project_skills_missing_skills_dir(self, tmp_path: Path):
+        empty_repo = tmp_path / "empty_repo"
+        empty_repo.mkdir()
+        copied = copy_project_skills(project_dir=empty_repo)
+        assert copied == []
 
     def test_unlink_project_binaries(self, tmp_path: Path):
         repo_dir = tmp_path / "jarvis_repo"

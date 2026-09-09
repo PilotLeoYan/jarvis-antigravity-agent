@@ -45,19 +45,27 @@ if [ ! -f "$AGENT_CONFIG_DIR/SOUL.md" ]; then
     cp cognitive/SOUL.md "$AGENT_CONFIG_DIR/SOUL.md"
 fi
 
-# 5. Skills Linking
-AGENT_SKILLS_DIR="$HOME/.agents/skills"
-mkdir -p "$AGENT_SKILLS_DIR"
-echo "[+] Linking generic skills into $AGENT_SKILLS_DIR..."
-for skill in skills/*; do
-    if [ -d "$skill" ]; then
-        sname=$(basename "$skill")
-        target="$AGENT_SKILLS_DIR/$sname"
-        if [ ! -e "$target" ]; then
-            ln -s "$SCRIPT_DIR/$skill" "$target"
-            echo "    Linked skill: $sname"
+# 5. Skills Deployment (Standard AGY User Skills Locations)
+SKILL_TARGET_DIRS=(
+    "$HOME/.gemini/config/skills"
+    "$HOME/.agents/skills"
+)
+echo "[+] Copying custom skills into standard AGY user skills locations..."
+for target_dir in "${SKILL_TARGET_DIRS[@]}"; do
+    mkdir -p "$target_dir"
+    for skill in skills/*; do
+        if [ -d "$skill" ]; then
+            sname=$(basename "$skill")
+            dest="$target_dir/$sname"
+            if [ -L "$dest" ] || [ -f "$dest" ]; then
+                rm -f "$dest"
+            elif [ -d "$dest" ]; then
+                rm -rf "$dest"
+            fi
+            cp -r "$SCRIPT_DIR/$skill" "$dest"
+            echo "    Copied skill: $sname -> $target_dir/$sname"
         fi
-    fi
+    done
 done
 
 # 6. Binary Symlinks Linking to ~/.local/bin
@@ -129,6 +137,11 @@ echo ""
 echo "   To enable and start as a systemd user daemon:"
 echo "     systemctl --user enable --now agy-telegram.service"
 echo ""
+echo "   To reload and start the service on your system:"
+echo "     systemctl --user daemon-reload"
+echo "     systemctl --user restart agy-telegram.service"
+echo "     systemctl --user status agy-telegram.service"
+echo ""
 echo "   To view service logs:"
 echo "     journalctl --user -u agy-telegram.service -f"
-echo "=========================================================="
+echo "================================================================"
