@@ -106,6 +106,8 @@ class UpdateSettings(BaseModel):
     remote: str = "origin"
     branch: str = "main"
     auto_restart: bool = True
+    check_interval_seconds: float = 3600.0
+    auto_apply: bool = False
 
 
 class Settings(BaseSettings):
@@ -351,6 +353,12 @@ def build_runtime_config(
         "max_completed_items": settings.agy.max_completed_items,
         "path_extra": settings.agy.path_extra,
         "local_bin": settings.agy.local_bin,
+        "mcp_config_path": settings.mcp.config_path,
+        "update_remote": settings.update.remote,
+        "update_branch": settings.update.branch,
+        "update_auto_restart": settings.update.auto_restart,
+        "update_check_interval_seconds": settings.update.check_interval_seconds,
+        "update_auto_apply": settings.update.auto_apply,
     }
 
 

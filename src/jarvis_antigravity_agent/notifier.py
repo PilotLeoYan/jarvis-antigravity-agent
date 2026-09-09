@@ -105,7 +105,7 @@ def main() -> None:
         sys.exit(1)
 
     if chat_id is None:
-        print(Messages.NOTIFIER_MISSING_TOKEN, file=sys.stderr)
+        print(Messages.NOTIFIER_MISSING_CHAT_ID, file=sys.stderr)
         sys.exit(1)
 
     chunks = split_message(

@@ -31,7 +31,7 @@ class Messages:
     AUDIO_PROCESSING_ERROR = "\u274c Audio processing error: {error}"
     HELP_TEXT = (
         "\U0001f916 *Jarvis \u2014 Antigravity Assistant*\n\n"
-        "Autonomous assistant powered by **Google Antigravity CLI (`agy`)**.]\n\n"
+        "Autonomous assistant powered by **Google Antigravity CLI (`agy`)**\n\n"
         "\U0001f399\ufe0f *Voice Notes & Audio:*\n"
         "Send audio notes directly. "
         "Transcribed locally via Whisper (0 token cost, 100% private).\n\n"
@@ -76,6 +76,10 @@ class Messages:
     NOTIFIER_MISSING_TOKEN = (
         "Error: Missing bot_token in config.yaml or TELEGRAM_BOT_TOKEN "  # noqa: S105
         "environment variable."
+    )
+    NOTIFIER_MISSING_CHAT_ID = (
+        "Error: Missing chat_id. Specify --chat-id <id> or configure "
+        "default_chat_id in config.yaml or TELEGRAM_CHAT_ID."
     )
     NOTIFIER_USAGE = (
         "Usage: send_message.py [--chat-id <id>] <message> "

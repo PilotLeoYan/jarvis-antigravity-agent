@@ -232,8 +232,13 @@ class BotHandlers:
             await update.message.reply_text(Messages.UNAUTHORIZED_ACCESS)
             return
 
-        prompt = " ".join(context.args) if context.args else ""
-        if not prompt.strip():
+        raw_text = update.message.text or ""
+        parts = raw_text.split(None, 1)
+        prompt = parts[1].strip() if len(parts) > 1 else ""
+        if not prompt and context.args:
+            prompt = " ".join(context.args).strip()
+
+        if not prompt:
             await update.message.reply_text(
                 Messages.SUBAGENT_USAGE, parse_mode=constants.ParseMode.MARKDOWN
             )
@@ -370,8 +375,13 @@ class BotHandlers:
             Messages.UPDATE_CHECKING, parse_mode=constants.ParseMode.MARKDOWN
         )
 
+        remote = self._cfg.get("update_remote", "origin")
+        branch = self._cfg.get("update_branch", "main")
+
         has_updates, local_sha, remote_sha, summary = await asyncio.to_thread(
-            check_for_updates
+            check_for_updates,
+            remote=remote,
+            branch=branch,
         )
         if not has_updates:
             await status_msg.edit_text(
@@ -384,7 +394,11 @@ class BotHandlers:
             Messages.UPDATE_APPLYING, parse_mode=constants.ParseMode.MARKDOWN
         )
 
-        success, msg = await asyncio.to_thread(apply_update)
+        success, msg = await asyncio.to_thread(
+            apply_update,
+            remote=remote,
+            branch=branch,
+        )
         if success:
             await status_msg.edit_text(
                 f"🎉 *Update Successful*\n\n{msg}\n\n_Restarting service..._",
@@ -406,8 +420,13 @@ class BotHandlers:
         if not self._is_authorized(update.effective_user.id):
             return
 
+        remote = self._cfg.get("update_remote", "origin")
+        branch = self._cfg.get("update_branch", "main")
+
         has_updates, local_sha, remote_sha, summary = await asyncio.to_thread(
-            check_for_updates
+            check_for_updates,
+            remote=remote,
+            branch=branch,
         )
         if has_updates:
             msg = (

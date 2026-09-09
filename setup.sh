@@ -18,7 +18,7 @@ command -v agy >/dev/null 2>&1 || { echo >&2 "[*] Note: Google Antigravity CLI (
 if command -v uv >/dev/null 2>&1; then
     echo "[+] Installing package with uv..."
     uv sync
-    echo "[+] Package installed. Entrypoints available: jarvis-antigravity-agent, jarvis-send-message"
+    echo "[+] Package installed. Entrypoints available: jarvis-antigravity-agent, jarvis-send-message, jarvis-spawn-agent, jarvis-mcp, jarvis-update"
 else
     echo "[+] uv not found — falling back to pip venv..."
     if [ ! -d "venv" ]; then

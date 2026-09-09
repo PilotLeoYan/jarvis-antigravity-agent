@@ -1,6 +1,9 @@
+import asyncio
 import logging
 import sys
+from typing import Any
 
+from telegram import constants
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from jarvis_antigravity_agent.config import (
@@ -12,6 +15,11 @@ from jarvis_antigravity_agent.config import (
 from jarvis_antigravity_agent.constants import Constants
 from jarvis_antigravity_agent.handlers import BotHandlers
 from jarvis_antigravity_agent.messages import Messages
+from jarvis_antigravity_agent.updater import (
+    apply_update,
+    check_for_updates,
+    restart_daemon,
+)
 
 _initial_settings = get_settings()
 _log_level = getattr(logging, _initial_settings.system.log_level.upper(), logging.INFO)
@@ -20,6 +28,71 @@ logging.basicConfig(
     level=_log_level,
 )
 logger = logging.getLogger(_initial_settings.system.logger_name)
+
+
+async def auto_update_checker(app: Application, runtime_cfg: dict[str, Any]) -> None:
+    """Continuously poll upstream GitHub repository for new releases or commits."""
+    remote = str(runtime_cfg.get("update_remote", "origin"))
+    branch = str(runtime_cfg.get("update_branch", "main"))
+    interval = float(runtime_cfg.get("update_check_interval_seconds", 3600.0))
+    auto_apply = bool(runtime_cfg.get("update_auto_apply", False))
+    auto_restart = bool(runtime_cfg.get("update_auto_restart", True))
+    default_chat_id = runtime_cfg.get("default_chat_id")
+
+    last_notified_sha: str | None = None
+
+    # Wait briefly after startup
+    await asyncio.sleep(15.0)
+
+    while True:
+        try:
+            has_updates, local_sha, remote_sha, summary = await asyncio.to_thread(
+                check_for_updates, remote=remote, branch=branch
+            )
+            if has_updates and remote_sha != last_notified_sha:
+                last_notified_sha = remote_sha
+                logger.info(
+                    "Detected newer commit on GitHub (%s..%s)", local_sha, remote_sha
+                )
+                if auto_apply:
+                    logger.info("Auto-update enabled: applying update...")
+                    success, msg = await asyncio.to_thread(
+                        apply_update, remote=remote, branch=branch
+                    )
+                    if default_chat_id:
+                        try:
+                            await app.bot.send_message(
+                                chat_id=default_chat_id,
+                                text=(
+                                    f"🎉 *Autonomous Code Update Applied*\n\n"
+                                    f"{msg}\n\n_Restarting service..._"
+                                ),
+                                parse_mode=constants.ParseMode.MARKDOWN,
+                            )
+                        except Exception as e:
+                            logger.debug("Failed to notify auto-update: %s", e)
+                    if success and auto_restart:
+                        await asyncio.sleep(1.0)
+                        restart_daemon()
+                elif default_chat_id:
+                    try:
+                        await app.bot.send_message(
+                            chat_id=default_chat_id,
+                            text=(
+                                f"🚀 *New Version Available on GitHub!*\n\n"
+                                f"• Current: `{local_sha}`\n"
+                                f"• Latest: `{remote_sha}`\n\n"
+                                f"*Commits:*\n{summary}\n\n"
+                                f"_Send `/update` to apply this update safely._"
+                            ),
+                            parse_mode=constants.ParseMode.MARKDOWN,
+                        )
+                    except Exception as e:
+                        logger.debug("Failed to send update alert: %s", e)
+        except Exception as e:
+            logger.debug("Error checking for updates in background: %s", e)
+
+        await asyncio.sleep(max(60.0, interval))
 
 
 def main() -> None:
@@ -34,7 +107,10 @@ def main() -> None:
 
     handlers = BotHandlers(runtime_cfg, state)
 
-    app = Application.builder().token(bot_token).build()
+    async def post_init(application: Application) -> None:
+        asyncio.create_task(auto_update_checker(application, runtime_cfg))
+
+    app = Application.builder().token(bot_token).post_init(post_init).build()
 
     app.add_handler(CommandHandler(["start", "help", "ayuda"], handlers.help_command))
     app.add_handler(CommandHandler(["new", "nuevo"], handlers.new_command))

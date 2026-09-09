@@ -7,6 +7,7 @@ config.yml
 *.token
 auth.json
 .env
+cognitive/MEMORY.md
 
 # Runtime state and database locks
 state.json

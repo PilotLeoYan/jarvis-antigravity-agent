@@ -92,3 +92,40 @@ class TestMcpManager:
         assert "Configured MCP Servers" in msg
         assert "github" in msg
         assert "docker run ghcr.io/github" in msg
+
+    def test_find_mcp_config_path_from_settings(self, tmp_path: Path):
+        from unittest.mock import patch
+
+        custom = tmp_path / "from_settings.json"
+        with patch("jarvis_antigravity_agent.config.get_settings") as mock_settings:
+            mock_settings.return_value.mcp.config_path = str(custom)
+            assert find_mcp_config_path() == custom
+
+    def test_mcp_cli_add_with_env(self, monkeypatch, tmp_path: Path):
+        import sys
+
+        from jarvis_antigravity_agent.mcp import main_cli
+
+        target = tmp_path / "cli_mcp.json"
+        monkeypatch.setenv("MCP_CONFIG_PATH", str(target))
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "jarvis-mcp",
+                "add",
+                "my-server",
+                "python3",
+                "-m",
+                "srv",
+                "-e",
+                "API_KEY=secret123",
+            ],
+        )
+        main_cli()
+
+        servers = list_mcp_servers(target)
+        assert "my-server" in servers
+        assert servers["my-server"]["command"] == "python3"
+        assert servers["my-server"]["args"] == ["-m", "srv"]
+        assert servers["my-server"]["env"] == {"API_KEY": "secret123"}
