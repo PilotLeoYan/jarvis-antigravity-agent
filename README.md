@@ -80,7 +80,7 @@ To link the executable entrypoints (`jarvis-antigravity-agent`, `jarvis-send-mes
 
 ```bash
 make install
-# Or manually create symlinks:
+# Or manually create symlinks and copy skills:
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/.venv/bin/jarvis-antigravity-agent" ~/.local/bin/
 ln -sf "$(pwd)/.venv/bin/jarvis-send-message" ~/.local/bin/
@@ -88,6 +88,11 @@ ln -sf "$(pwd)/.venv/bin/jarvis-spawn-agent" ~/.local/bin/
 ln -sf "$(pwd)/.venv/bin/jarvis-mcp" ~/.local/bin/
 ln -sf "$(pwd)/.venv/bin/jarvis-update" ~/.local/bin/
 ln -sf "$(pwd)/.venv/bin/jarvis-uninstall" ~/.local/bin/
+
+# Copy custom skills into standard AGY user skills locations:
+mkdir -p ~/.gemini/config/skills ~/.agents/skills
+cp -r skills/* ~/.gemini/config/skills/
+cp -r skills/* ~/.agents/skills/
 ```
 
 This ensures the entrypoints are accessible in your `$PATH` and available for the systemd service daemon:

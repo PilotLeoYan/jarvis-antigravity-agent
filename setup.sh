@@ -53,17 +53,13 @@ SKILL_TARGET_DIRS=(
 echo "[+] Copying custom skills into standard AGY user skills locations..."
 for target_dir in "${SKILL_TARGET_DIRS[@]}"; do
     mkdir -p "$target_dir"
-    for skill in skills/*; do
-        if [ -d "$skill" ]; then
+    for skill in "$SCRIPT_DIR/skills"/*; do
+        if [ -d "$skill" ] && [ -f "$skill/SKILL.md" ]; then
             sname=$(basename "$skill")
             dest="$target_dir/$sname"
-            if [ -L "$dest" ] || [ -f "$dest" ]; then
-                rm -f "$dest"
-            elif [ -d "$dest" ]; then
-                rm -rf "$dest"
-            fi
-            cp -r "$SCRIPT_DIR/$skill" "$dest"
-            echo "    Copied skill: $sname -> $target_dir/$sname"
+            rm -rf "$dest"
+            cp -r "$skill" "$dest"
+            echo "    Copied skill: $sname -> $dest"
         fi
     done
 done
