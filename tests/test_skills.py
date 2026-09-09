@@ -76,3 +76,32 @@ class TestSkillsInspector:
     def test_format_skills_markdown_empty(self):
         md = format_skills_markdown([])
         assert "No global skills detected" in md
+
+    def test_parse_skill_metadata_no_frontmatter_body_fallback(self, tmp_path: Path):
+        skill_dir = tmp_path / "custom-tool"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text(
+            "# Custom Tool Title\n\n"
+            "This tool provides autonomous testing workflows for the project.\n\n"
+            "## Details\nSome details here.\n",
+            encoding="utf-8",
+        )
+        meta = parse_skill_metadata(skill_md)
+        assert meta["name"] == "custom-tool"
+        assert (
+            meta["description"]
+            == "This tool provides autonomous testing workflows for the project."
+        )
+
+    def test_format_skills_markdown_escapes_underscores(self):
+        skills_mock = [
+            {
+                "name": "generative_ui",
+                "description": "Interactive HTML_widgets in chat.",
+                "source": "Built-in",
+            }
+        ]
+        md = format_skills_markdown(skills_mock)
+        assert "generative\\_ui" in md
+        assert "HTML\\_widgets" in md

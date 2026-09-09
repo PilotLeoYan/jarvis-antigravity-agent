@@ -27,6 +27,7 @@ from jarvis_antigravity_agent.updater import (
     check_for_updates,
     restart_daemon,
 )
+from jarvis_antigravity_agent.utils import send_reply_chunks
 
 logger = logging.getLogger(Constants.LOGGER_NAME)
 
@@ -137,9 +138,7 @@ class BotHandlers:
         if not self._is_authorized(update.effective_user.id):
             await update.message.reply_text(Messages.UNAUTHORIZED_ACCESS)
             return
-        await update.message.reply_text(
-            Messages.START_WELCOME, parse_mode=constants.ParseMode.MARKDOWN
-        )
+        await send_reply_chunks(update, Messages.START_WELCOME)
 
     async def help_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -149,9 +148,7 @@ class BotHandlers:
         if not self._is_authorized(update.effective_user.id):
             await update.message.reply_text(Messages.UNAUTHORIZED_ACCESS)
             return
-        await update.message.reply_text(
-            Messages.HELP_TEXT, parse_mode=constants.ParseMode.MARKDOWN
-        )
+        await send_reply_chunks(update, Messages.HELP_TEXT)
 
     async def new_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -212,7 +209,7 @@ class BotHandlers:
             load5=load5_str,
             disk_pct=disk_pct,
         )
-        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+        await send_reply_chunks(update, msg)
 
     async def quotas_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -224,7 +221,7 @@ class BotHandlers:
 
         quota_data = await asyncio.to_thread(get_agy_quotas)
         msg = format_quotas_markdown(quota_data)
-        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+        await send_reply_chunks(update, msg)
 
     async def skills_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -235,7 +232,7 @@ class BotHandlers:
             return
 
         msg = await asyncio.to_thread(format_skills_markdown)
-        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+        await send_reply_chunks(update, msg)
 
     async def mcps_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -246,7 +243,7 @@ class BotHandlers:
             return
 
         msg = await asyncio.to_thread(format_global_mcp_status)
-        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+        await send_reply_chunks(update, msg)
 
     async def cancel_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -280,9 +277,7 @@ class BotHandlers:
         if not self._is_authorized(update.effective_user.id):
             return
 
-        await update.message.reply_text(
-            Messages.UNINSTALL_GUIDE, parse_mode=constants.ParseMode.MARKDOWN
-        )
+        await send_reply_chunks(update, Messages.UNINSTALL_GUIDE)
 
     async def boost_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

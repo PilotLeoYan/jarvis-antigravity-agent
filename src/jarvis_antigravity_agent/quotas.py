@@ -19,6 +19,30 @@ CSRF_HEADER_NAME = "x-codeium-csrf-token"  # noqa: S105
 DEFAULT_CANDIDATE_PORTS = [46433, 45669, 45297, 39615]
 
 
+def _extract_ports_from_proc_net_tcp() -> list[int]:
+    """Inspect listening localhost ports via /proc/net/tcp."""
+    ports: list[int] = []
+    for proc_path in ("/proc/net/tcp", "/proc/net/tcp6"):
+        if not os.path.isfile(proc_path):
+            continue
+        try:
+            with open(proc_path, encoding="utf-8") as f:
+                lines = f.readlines()[1:]
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) > 3 and parts[3] == "0A":  # TCP_LISTEN
+                    local_addr = parts[1]
+                    if ":" in local_addr:
+                        ip_hex, port_hex = local_addr.split(":", 1)
+                        if ip_hex.upper() in {"0100007F", "00000000"}:
+                            port = int(port_hex, 16)
+                            if port not in ports:
+                                ports.append(port)
+        except (OSError, ValueError):
+            continue
+    return ports
+
+
 def _extract_ports_for_pid(pid: str) -> list[int]:
     """Inspect listening TCP ports associated with a process ID."""
     ports: list[int] = []
@@ -35,6 +59,12 @@ def _extract_ports_for_pid(pid: str) -> list[int]:
     except Exception as e:
         logger.debug("Failed to inspect ports via ss: %s", e)
 
+    # Fallback to inspecting /proc/net/tcp if ss yielded no ports
+    if not ports:
+        for p in _extract_ports_from_proc_net_tcp():
+            if p not in ports:
+                ports.append(p)
+
     # Fallback to inspecting candidate ports
     for p in DEFAULT_CANDIDATE_PORTS:
         if p not in ports:
@@ -44,6 +74,9 @@ def _extract_ports_for_pid(pid: str) -> list[int]:
 
 def _discover_language_server() -> tuple[str | None, str | None, list[int]]:
     """Discover running language_server PID, CSRF token, and listening ports."""
+    csrf_pattern = re.compile(r"--csrf[_-]token(?:=|\s+)([a-zA-Z0-9_-]+)")
+    host_bridge_pattern = re.compile(r"--host_bridge_url=https?://127\.0\.0\.1:(\d+)")
+
     pgrep_bin = shutil.which("pgrep") or "/usr/bin/pgrep"
     try:
         # Check running processes using pgrep
@@ -51,13 +84,21 @@ def _discover_language_server() -> tuple[str | None, str | None, list[int]]:
             [pgrep_bin, "-a", "-f", "language_server"], stderr=subprocess.DEVNULL
         ).decode("utf-8", errors="ignore")
         for line in out.splitlines():
-            if "--csrf_token" in line:
+            if "csrf" in line.lower():
                 parts = line.strip().split()
                 pid = parts[0]
-                csrf_match = re.search(r"--csrf_token\s+([a-zA-Z0-9_-]+)", line)
+                csrf_match = csrf_pattern.search(line)
                 csrf_token = csrf_match.group(1) if csrf_match else None
                 ports = _extract_ports_for_pid(pid)
-                return pid, csrf_token, ports
+
+                hb_match = host_bridge_pattern.search(line)
+                if hb_match:
+                    hb_port = int(hb_match.group(1))
+                    if hb_port not in ports:
+                        ports.insert(0, hb_port)
+
+                if csrf_token:
+                    return pid, csrf_token, ports
     except Exception as e:
         logger.debug("Language server discovery via pgrep failed: %s", e)
 
@@ -77,13 +118,19 @@ def _discover_language_server() -> tuple[str | None, str | None, list[int]]:
                             .replace(b"\x00", b" ")
                             .decode("utf-8", errors="ignore")
                         )
-                    if "language_server" in cmdline and "--csrf_token" in cmdline:
-                        csrf_match = re.search(
-                            r"--csrf_token\s+([a-zA-Z0-9_-]+)", cmdline
-                        )
+                    if "language_server" in cmdline and "csrf" in cmdline.lower():
+                        csrf_match = csrf_pattern.search(cmdline)
                         csrf_token = csrf_match.group(1) if csrf_match else None
                         ports = _extract_ports_for_pid(entry)
-                        return entry, csrf_token, ports
+
+                        hb_match = host_bridge_pattern.search(cmdline)
+                        if hb_match:
+                            hb_port = int(hb_match.group(1))
+                            if hb_port not in ports:
+                                ports.insert(0, hb_port)
+
+                        if csrf_token:
+                            return entry, csrf_token, ports
                 except (OSError, PermissionError):
                     continue
     except Exception as e:
@@ -143,9 +190,13 @@ def format_quotas_markdown(quota_data: dict[str, Any] | None) -> str:
     for group in groups:
         g_name = group.get("displayName", "Model Group")
         g_desc = group.get("description", "")
-        lines.append(f"🔷 *{g_name}*")
-        if g_desc:
-            lines.append(f"_{g_desc}_")
+        escaped_g_name = g_name.replace("_", "\\_").replace("*", "\\*")
+        clean_g_desc = (
+            g_desc.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[")
+        )
+        lines.append(f"🔷 *{escaped_g_name}*")
+        if clean_g_desc:
+            lines.append(f"_{clean_g_desc}_")
 
         buckets = group.get("buckets", [])
         for b in buckets:
@@ -153,12 +204,16 @@ def format_quotas_markdown(quota_data: dict[str, Any] | None) -> str:
             frac = b.get("remainingFraction")
             pct_str = f"{frac * 100:.1f}%" if frac is not None else "N/A"
             b_desc = b.get("description", "")
+            escaped_b_name = b_name.replace("_", "\\_").replace("*", "\\*")
+            clean_b_desc = (
+                b_desc.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[")
+            )
 
             # Build readable status bullet
-            if b_desc:
-                lines.append(f"• *{b_name}*: `{pct_str}` — _{b_desc}_")
+            if clean_b_desc:
+                lines.append(f"• *{escaped_b_name}*: `{pct_str}` — _{clean_b_desc}_")
             else:
-                lines.append(f"• *{b_name}*: `{pct_str}`")
+                lines.append(f"• *{escaped_b_name}*: `{pct_str}`")
 
         lines.append("")
 

@@ -116,3 +116,39 @@ class TestQuotasModule:
         assert "Flash and Pro" in md
         assert "67.5%" in md
         assert "100.0%" in md
+
+    def test_discover_language_server_csrf_variants(self):
+        fake_pgrep = (
+            "8888 /path/language_server --standalone "
+            "--csrf-token=secret-token-equals --host_bridge_url=http://127.0.0.1:39615\n"
+        )
+        with patch("subprocess.check_output", return_value=fake_pgrep.encode("utf-8")):
+            with patch(
+                "jarvis_antigravity_agent.quotas._extract_ports_for_pid",
+                return_value=[46433],
+            ):
+                pid, token, ports = _discover_language_server()
+                assert pid == "8888"
+                assert token == "secret-token-equals"
+                assert 39615 in ports
+
+    def test_format_quotas_markdown_escapes_special_chars(self):
+        quota_data = {
+            "groups": [
+                {
+                    "displayName": "custom_group_name",
+                    "description": "desc_with_underscores",
+                    "buckets": [
+                        {
+                            "displayName": "bucket_limit_1",
+                            "remainingFraction": 0.5,
+                            "description": "info_sample",
+                        }
+                    ],
+                }
+            ]
+        }
+        md = format_quotas_markdown(quota_data)
+        assert "custom\\_group\\_name" in md
+        assert "desc\\_with\\_underscores" in md
+        assert "bucket\\_limit\\_1" in md
