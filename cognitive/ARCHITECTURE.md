@@ -30,7 +30,7 @@ The system bridges **Google Antigravity CLI (`agy`)** with **Telegram** to provi
 |  |   |                       |   JSON-RPC / CLI  +-----------------------+ |  |
 |  |   |                       | ----------------> | Antigravity CLI (agy) | |  |
 |  |   |                       | <---------------- | -c / --output-format  | |  |
-|  |   |                       |  stream-json out  | Rules: GEMINI.md      | |  |
+|  |   |                       |  stream-json out  | Rules: SOUL.md        | |  |
 |  |   +-----------------------+                   | Memory: MEMORY.md     | |  |
 |  |                                               | Skills: .agents/skills| |  |
 |  |                                               +-----------------------+ |  |
@@ -72,6 +72,6 @@ When `agy` processes a request, the bridge listens to the `stream-json` event st
 
 ## 3. Cognitive Files & System Prompts
 
-- **`GEMINI.md` / `SOUL.md`:** The core persona definition and operational guardrails injected into the agent's context.
+- **`SOUL.md`:** The core persona definition and operational guardrails injected into the agent's context.
 - **`MEMORY.md`:** Long-term external memory tracking system topology, active projects, user preferences, and cron schedules.
 - **`skills/`:** Modular capabilities adhering to the Open Agent Skills specification, loaded dynamically into the agent's reasoning framework.

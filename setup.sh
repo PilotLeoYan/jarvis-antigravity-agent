@@ -40,9 +40,9 @@ fi
 # 4. Cognitive Setup
 AGENT_CONFIG_DIR="$HOME/.gemini/config"
 mkdir -p "$AGENT_CONFIG_DIR"
-if [ ! -f "$AGENT_CONFIG_DIR/GEMINI.md" ]; then
-    echo "[+] Deploying cognitive rules to $AGENT_CONFIG_DIR/GEMINI.md..."
-    cp cognitive/GEMINI.md "$AGENT_CONFIG_DIR/GEMINI.md"
+if [ ! -f "$AGENT_CONFIG_DIR/SOUL.md" ]; then
+    echo "[+] Deploying cognitive rules to $AGENT_CONFIG_DIR/SOUL.md..."
+    cp cognitive/SOUL.md "$AGENT_CONFIG_DIR/SOUL.md"
 fi
 
 # 5. Skills Linking

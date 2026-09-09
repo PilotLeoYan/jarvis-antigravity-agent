@@ -43,3 +43,8 @@ class TestConstants:
 
     def test_state_key_continue_is_string(self):
         assert isinstance(Constants.STATE_KEY_CONTINUE, str)
+
+    def test_agy_model_constants(self):
+        assert Constants.AGY_MODEL_FLAG == "--model"
+        assert isinstance(Constants.AGY_DEFAULT_MODEL, str)
+        assert len(Constants.AGY_DEFAULT_MODEL) > 0

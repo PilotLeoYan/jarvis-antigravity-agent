@@ -19,6 +19,8 @@ class Constants:
     AGY_OUTPUT_FORMAT = "stream-json"
     AGY_CONTINUE_FLAG = "-c"
     AGY_PROMPT_FLAG = "-p"
+    AGY_MODEL_FLAG = "--model"
+    AGY_DEFAULT_MODEL = "Gemini 3.1 Pro (High)"
     AGY_OUTPUT_FORMAT_FLAG = "--output-format"
     AGY_DEFAULT_FLAGS = ["--dangerously-skip-permissions"]
     AGY_LOCAL_BIN = os.path.expanduser("~/.local/bin")
