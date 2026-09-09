@@ -272,6 +272,18 @@ class BotHandlers:
         else:
             await update.message.reply_text(Messages.NO_ACTIVE_TASK)
 
+    async def uninstall_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            return
+
+        await update.message.reply_text(
+            Messages.UNINSTALL_GUIDE, parse_mode=constants.ParseMode.MARKDOWN
+        )
+
     async def boost_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:

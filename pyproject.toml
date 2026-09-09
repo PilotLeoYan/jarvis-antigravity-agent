@@ -21,6 +21,7 @@ jarvis-send-message = "jarvis_antigravity_agent.notifier:main"
 jarvis-mcp = "jarvis_antigravity_agent.mcp:main_cli"
 jarvis-spawn-agent = "jarvis_antigravity_agent.agent_manager:main_cli"
 jarvis-update = "jarvis_antigravity_agent.updater:main_cli"
+jarvis-uninstall = "jarvis_antigravity_agent.uninstaller:main_cli"
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]

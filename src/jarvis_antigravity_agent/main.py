@@ -128,6 +128,7 @@ def main() -> None:
     app.add_handler(CommandHandler(["mcp"], handlers.mcp_command))
     app.add_handler(CommandHandler(["update"], handlers.update_command))
     app.add_handler(CommandHandler(["checkupdate"], handlers.checkupdate_command))
+    app.add_handler(CommandHandler(["uninstall"], handlers.uninstall_command))
 
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.handle_message)

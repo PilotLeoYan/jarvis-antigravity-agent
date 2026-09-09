@@ -159,3 +159,22 @@ Inspect service logs with:
 ```bash
 journalctl --user -u agy-telegram.service -f
 ```
+
+## Uninstallation & Cleanup
+
+To stop the background daemon and safely uninstall the agent:
+
+```bash
+# Interactive uninstaller (prompts for confirmation)
+./uninstall.sh
+
+# Or via installed CLI entrypoint
+jarvis-uninstall
+```
+
+### Cleanup Flags:
+- `--purge-personal`: Removes personal configuration files (`config.yaml`), `state.json`, credentials, and voice caches.
+- `--purge-agy`: Removes Google Antigravity application data (`~/.gemini`, `~/.agents`, `~/.config/Antigravity`).
+- `--all`: Completely removes the systemd daemon, personal files, and all AGY data.
+- `--dry-run`: Simulates the uninstallation without making any filesystem or daemon changes.
+- `-y`, `--yes`: Non-interactive mode (proceed without confirmation prompts).

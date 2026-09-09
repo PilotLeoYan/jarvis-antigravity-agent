@@ -71,9 +71,22 @@ class Messages:
         "\u2022 `/mcp` \u2014 Inspect and manage Model Context Protocol servers.\n"
         "\u2022 `/update` \u2014 Safe self-update from GitHub repository.\n"
         "\u2022 `/checkupdate` \u2014 Check for available updates on GitHub.\n"
+        "\u2022 `/uninstall` \u2014 Display uninstallation and data purge options.\n"
         "\u2022 `/cancel` \u2014 Abort currently executing task.\n"
         "\u2022 `/help` \u2014 Display this operational guide.\n\n"
         "Send a message or voice note to begin."
+    )
+    UNINSTALL_GUIDE = (
+        "🗑️ *Jarvis Antigravity Agent \u2014 Uninstallation*\n\n"
+        "To safely uninstall this project and its system services, run:\n\n"
+        "`./uninstall.sh`\n"
+        "or: `jarvis-uninstall`\n\n"
+        "⚙️ *Cleanup Options:*\n"
+        "• `--purge-personal`: Deletes `config.yaml`, `state.json`, and logs.\n"
+        "• `--purge-agy`: Deletes AGY data "
+        "(`~/.gemini`, `~/.agents`, `~/.config/Antigravity`).\n"
+        "• `--all`: Removes systemd daemon, personal files, and all AGY data.\n"
+        "• `--dry-run`: Simulates the uninstallation without modifying files."
     )
     CONTEXT_RESET = (
         "\U0001f504 *Conversation context reset*\n\n"
