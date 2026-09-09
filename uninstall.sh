@@ -8,13 +8,15 @@ echo "=========================================================="
 echo "   Jarvis Antigravity Agent - Automated Uninstaller"
 echo "=========================================================="
 
+export PYTHONPATH="${SCRIPT_DIR}/src:${PYTHONPATH}"
+
 # Pass all arguments through to python uninstaller module
 if command -v uv >/dev/null 2>&1; then
     uv run python -m jarvis_antigravity_agent.uninstaller "$@"
 elif [ -f "./venv/bin/python" ]; then
     ./venv/bin/python -m jarvis_antigravity_agent.uninstaller "$@"
 elif command -v python3 >/dev/null 2>&1; then
-    python3 -m jarvis_antigravity_agent.uninstaller "$@"
+    python3 "${SCRIPT_DIR}/src/jarvis_antigravity_agent/uninstaller.py" "$@"
 else
     echo "[-] Error: python3 or uv is required to execute uninstaller." >&2
     exit 1

@@ -55,6 +55,17 @@ def parse_skill_metadata(skill_md_path: Path) -> dict[str, str]:
 
                 if current_key and multiline_val:
                     metadata[current_key] = " ".join(multiline_val).strip()
+
+        # Fallback to first non-header markdown paragraph if no description
+        # was specified in the frontmatter
+        if metadata.get("description") in {None, "", "No description provided."}:
+            for block in content.split("\n\n"):
+                stripped_block = block.strip()
+                if stripped_block and not stripped_block.startswith(("#", "---")):
+                    metadata["description"] = " ".join(
+                        stripped_block.splitlines()
+                    ).strip()
+                    break
     except Exception as e:
         logger.debug("Failed parsing skill metadata from %s: %s", skill_md_path, e)
 
@@ -134,7 +145,10 @@ def format_skills_markdown(
         # Truncate long descriptions to keep messages neat
         if len(desc) > 180:
             desc = desc[:177] + "..."
-        lines.append(f"• *{name}* `({source})`\n  _{desc}_\n")
+
+        escaped_name = name.replace("_", "\\_").replace("*", "\\*")
+        clean_desc = desc.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[")
+        lines.append(f"• *{escaped_name}* `({source})`\n  _{clean_desc}_\n")
 
     lines.append(
         "ℹ️ _Skills teach autonomous reasoning capabilities across all AGY sessions._"

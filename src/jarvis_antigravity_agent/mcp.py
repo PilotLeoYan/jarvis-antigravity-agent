@@ -150,19 +150,33 @@ def format_mcp_status(config_path: str | Path | None = None) -> str:
         args_str = f" {' '.join(str(a) for a in args_list)}" if args_list else ""
         env_dict = spec.get("env", {})
         env_str = f" (env: {len(env_dict)} vars)" if env_dict else ""
-        lines.append(f"• *{s_name}*: `{cmd}{args_str}`{env_str}")
+        escaped_s_name = s_name.replace("_", "\\_").replace("*", "\\*")
+        lines.append(f"• *{escaped_s_name}*: `{cmd}{args_str}`{env_str}")
 
     return "\n".join(lines)
 
 
+def resolve_global_mcp_path() -> Path:
+    """Locate global Antigravity/Gemini MCP config file with fallback paths."""
+    candidates = [
+        DEFAULT_GLOBAL_MCP_PATH,
+        os.path.expanduser("~/.config/Antigravity/mcp_config.json"),
+        os.path.expanduser("~/.agents/mcp_config.json"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return Path(c)
+    return Path(DEFAULT_GLOBAL_MCP_PATH)
+
+
 def list_global_mcp_servers() -> dict[str, dict[str, Any]]:
     """List global MCP servers from Antigravity/Gemini configuration."""
-    return list_mcp_servers(config_path=DEFAULT_GLOBAL_MCP_PATH)
+    return list_mcp_servers(config_path=resolve_global_mcp_path())
 
 
 def format_global_mcp_status() -> str:
     """Generate Markdown status message for global MCP servers in AGY."""
-    target_path = Path(DEFAULT_GLOBAL_MCP_PATH)
+    target_path = resolve_global_mcp_path()
     servers = list_global_mcp_servers()
 
     # Also detect any installed plugins/tools in ~/.gemini/antigravity/mcp
@@ -194,12 +208,14 @@ def format_global_mcp_status() -> str:
         args_str = f" {' '.join(str(a) for a in args_list)}" if args_list else ""
         env_dict = spec.get("env", {})
         env_str = f" (env: {len(env_dict)} vars)" if env_dict else ""
-        lines.append(f"• *{s_name}*: `{cmd}{args_str}`{env_str}")
+        escaped_s_name = s_name.replace("_", "\\_").replace("*", "\\*")
+        lines.append(f"• *{escaped_s_name}*: `{cmd}{args_str}`{env_str}")
 
     if extra_mcp_dirs:
         lines.append("\n📁 *Installed AGY MCP Directory Tools:*")
         for ed in extra_mcp_dirs:
-            lines.append(f"• `{ed}`")
+            escaped_ed = ed.replace("_", "\\_").replace("*", "\\*")
+            lines.append(f"• `{escaped_ed}`")
 
     lines.append(
         "\nℹ️ _Global MCP servers are accessible across all Antigravity agent tasks._"

@@ -80,10 +80,17 @@ class TestUninstaller:
         unrelated = tmp_path / "README.md"
         unrelated.write_text("readme")
 
+        # Check .env and log files deletion as well
+        env_f = tmp_path / ".env"
+        env_f.write_text("TOKEN=123")
+        log_f = tmp_path / "jarvis.log"
+        log_f.write_text("log data")
+
         # Test dry-run first
         dry_removed = purge_personal_data(base_dir=tmp_path, dry_run=True)
-        assert len(dry_removed) >= 3
+        assert len(dry_removed) >= 5
         assert config_f.exists()
+        assert env_f.exists()
 
         # Actual deletion
         removed = purge_personal_data(base_dir=tmp_path, dry_run=False)
@@ -91,6 +98,8 @@ class TestUninstaller:
         assert not config_f.exists()
         assert not state_f.exists()
         assert not audio_f.exists()
+        assert not env_f.exists()
+        assert not log_f.exists()
         assert unrelated.exists()
 
     def test_purge_agy_data(self, tmp_path: Path):
@@ -101,20 +110,41 @@ class TestUninstaller:
         agents_dir = tmp_path / ".agents"
         agents_dir.mkdir()
 
+        cache_dir = tmp_path / ".cache" / "antigravity"
+        cache_dir.mkdir(parents=True)
+
         # Dry run
         dry_purged = purge_agy_data(
-            directories=[str(gemini_dir), str(agents_dir)], dry_run=True
+            directories=[str(gemini_dir), str(agents_dir), str(cache_dir)],
+            dry_run=True,
         )
-        assert len(dry_purged) == 2
+        assert len(dry_purged) == 3
         assert gemini_dir.exists()
+        assert cache_dir.exists()
 
         # Actual purge
         purged = purge_agy_data(
-            directories=[str(gemini_dir), str(agents_dir)], dry_run=False
+            directories=[str(gemini_dir), str(agents_dir), str(cache_dir)],
+            dry_run=False,
         )
-        assert len(purged) == 2
+        assert len(purged) == 3
         assert not gemini_dir.exists()
         assert not agents_dir.exists()
+        assert not cache_dir.exists()
+
+    def test_stop_and_disable_service_broken_symlink(self, tmp_path: Path):
+        broken_link = tmp_path / "broken.service"
+        broken_link.symlink_to(tmp_path / "nonexistent.service")
+        assert broken_link.is_symlink()
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            ok = stop_and_disable_service(
+                service_name="broken.service",
+                service_file=str(broken_link),
+                dry_run=False,
+            )
+            assert ok is True
+            assert not broken_link.is_symlink()
 
     def test_perform_uninstall_orchestrator(self, tmp_path: Path):
         with patch(
@@ -156,4 +186,29 @@ class TestUninstaller:
                     purge_agy=True,
                     purge_service=True,
                     dry_run=True,
+                    project_dir=None,
+                )
+
+    def test_main_cli_custom_project_dir(self, tmp_path: Path):
+        with patch(
+            "sys.argv",
+            [
+                "jarvis-uninstall",
+                "-d",
+                str(tmp_path),
+                "--dry-run",
+                "-y",
+                "--purge-personal",
+            ],
+        ):
+            with patch(
+                "jarvis_antigravity_agent.uninstaller.perform_uninstall"
+            ) as mock_perform:
+                main_cli()
+                mock_perform.assert_called_once_with(
+                    purge_personal=True,
+                    purge_agy=False,
+                    purge_service=True,
+                    dry_run=True,
+                    project_dir=str(tmp_path),
                 )

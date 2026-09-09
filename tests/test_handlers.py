@@ -124,3 +124,21 @@ class TestBotHandlersEnglishCommands:
         mock_update.message.reply_text.assert_awaited_once_with(
             Messages.CONTEXT_RESET, parse_mode="Markdown"
         )
+
+    @pytest.mark.anyio
+    async def test_skills_command_markdown_failure_fallback(
+        self, runtime_cfg, state, mock_update, mock_context
+    ):
+        handlers = BotHandlers(runtime_cfg, state)
+        mock_update.message.reply_text.side_effect = [
+            Exception("Can't parse entities"),
+            AsyncMock(),
+        ]
+        with patch(
+            "jarvis_antigravity_agent.handlers.format_skills_markdown",
+            return_value="🧠 Sample Skill with *broken _entities",
+        ):
+            await handlers.skills_command(mock_update, mock_context)
+            assert mock_update.message.reply_text.call_count == 2
+            second_call = mock_update.message.reply_text.call_args_list[1]
+            assert "🧠 Sample Skill with *broken _entities" in second_call[0][0]

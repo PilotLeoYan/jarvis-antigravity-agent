@@ -7,9 +7,21 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from jarvis_antigravity_agent.constants import Constants
+# If executed directly as a script, ensure src is in sys.path
+_SRC_DIR = str(Path(__file__).resolve().parent.parent)
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
 
-logger = logging.getLogger(Constants.LOGGER_NAME)
+try:
+    from jarvis_antigravity_agent.constants import Constants
+
+    LOGGER_NAME = Constants.LOGGER_NAME
+    DEFAULT_REPO_DIR = Path(Constants.BASE_DIR)
+except ImportError:
+    LOGGER_NAME = "jarvis-bridge"
+    DEFAULT_REPO_DIR = Path(__file__).resolve().parent.parent.parent
+
+logger = logging.getLogger(LOGGER_NAME)
 
 SYSTEMD_SERVICE_FILE = os.path.expanduser("~/.config/systemd/user/agy-telegram.service")
 SERVICE_NAME = "agy-telegram.service"
@@ -19,12 +31,17 @@ DEFAULT_PERSONAL_FILES = [
     "config.yml",
     "config.json",
     "state.json",
+    ".env",
+    "jarvis.log",
 ]
 
 DEFAULT_AGY_DIRECTORIES = [
     os.path.expanduser("~/.gemini"),
     os.path.expanduser("~/.agents"),
     os.path.expanduser("~/.config/Antigravity"),
+    os.path.expanduser("~/.config/antigravity"),
+    os.path.expanduser("~/.cache/antigravity"),
+    os.path.expanduser("~/.antigravity"),
 ]
 
 
@@ -37,7 +54,11 @@ def stop_and_disable_service(
     systemctl = shutil.which("systemctl") or "/bin/systemctl"
     success = True
 
-    if os.path.isfile(service_file) or shutil.which("systemctl"):
+    if (
+        os.path.isfile(service_file)
+        or os.path.islink(service_file)
+        or shutil.which("systemctl")
+    ):
         if dry_run:
             print(f"[dry-run] Would stop and disable systemd service: {service_name}")
             print(f"[dry-run] Would remove service file: {service_file}")
@@ -62,7 +83,7 @@ def stop_and_disable_service(
             success = False
 
         # Remove service file
-        if os.path.isfile(service_file):
+        if os.path.isfile(service_file) or os.path.islink(service_file):
             try:
                 os.remove(service_file)
                 print(f"[+] Removed service file: {service_file}")
@@ -86,33 +107,44 @@ def stop_and_disable_service(
 
 def unlink_project_skills(
     project_dir: Path | str | None = None,
-    skills_target_dir: str = "~/.agents/skills",
+    skills_target_dir: str | list[str] | None = None,
     dry_run: bool = False,
 ) -> list[str]:
-    """Remove symlinks in ~/.agents/skills pointing to this project repository."""
-    base_dir = Path(project_dir or Path.cwd()).resolve()
-    target_skills = Path(os.path.expanduser(skills_target_dir))
+    """Remove symlinks pointing to this project repository across global skill dirs."""
+    base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
+    if skills_target_dir is None:
+        target_dirs = [
+            os.path.expanduser("~/.agents/skills"),
+            os.path.expanduser("~/.gemini/config/skills"),
+        ]
+    elif isinstance(skills_target_dir, str):
+        target_dirs = [os.path.expanduser(skills_target_dir)]
+    else:
+        target_dirs = [os.path.expanduser(d) for d in skills_target_dir]
+
     unlinked: list[str] = []
 
-    if not target_skills.is_dir():
-        return unlinked
+    for s_dir in target_dirs:
+        target_skills = Path(s_dir)
+        if not target_skills.is_dir():
+            continue
 
-    for item in target_skills.iterdir():
-        if item.is_symlink():
-            try:
-                resolved = item.resolve()
-                if str(resolved).startswith(str(base_dir)):
-                    if dry_run:
-                        print(
-                            f"[dry-run] Would remove skill symlink: "
-                            f"{item} -> {resolved}"
-                        )
-                    else:
-                        item.unlink()
-                        print(f"[+] Removed skill symlink: {item.name}")
-                    unlinked.append(item.name)
-            except Exception as e:
-                logger.debug("Failed checking symlink %s: %s", item, e)
+        for item in target_skills.iterdir():
+            if item.is_symlink():
+                try:
+                    resolved = item.resolve()
+                    if str(resolved).startswith(str(base_dir)):
+                        if dry_run:
+                            print(
+                                f"[dry-run] Would remove skill symlink: "
+                                f"{item} -> {resolved}"
+                            )
+                        else:
+                            item.unlink()
+                            print(f"[+] Removed skill symlink: {item.name}")
+                        unlinked.append(item.name)
+                except Exception as e:
+                    logger.debug("Failed checking symlink %s: %s", item, e)
 
     return unlinked
 
@@ -122,33 +154,51 @@ def purge_personal_data(
     extra_files: list[str] | None = None,
     dry_run: bool = False,
 ) -> list[str]:
-    """Delete personal configuration files, states, and voice caches."""
-    root = Path(base_dir or Path.cwd()).resolve()
+    """Delete personal configuration files, states, logs, and voice caches."""
+    root = Path(base_dir or DEFAULT_REPO_DIR).resolve()
     targets = list(DEFAULT_PERSONAL_FILES)
     if extra_files:
         targets.extend(extra_files)
 
+    # Also include explicit paths from environment if set
+    for env_k in ("JARVIS_CONFIG_PATH", "AGY_TELEGRAM_CONFIG"):
+        env_val = os.environ.get(env_k)
+        if env_val and env_val not in targets:
+            targets.append(env_val)
+
     removed: list[str] = []
+    seen: set[str] = set()
+
     for f_name in targets:
-        target_path = root / f_name
-        if target_path.is_file():
+        p = Path(f_name)
+        target_path = p if p.is_absolute() else (root / f_name)
+        canon = str(target_path)
+        if canon in seen:
+            continue
+        seen.add(canon)
+
+        if target_path.is_file() or target_path.is_symlink():
             if dry_run:
                 print(f"[dry-run] Would delete personal file: {target_path}")
             else:
                 try:
                     target_path.unlink()
-                    print(f"[+] Deleted personal file: {f_name}")
+                    print(f"[+] Deleted personal file: {target_path.name}")
                 except Exception as e:
                     logger.error("Failed to delete %s: %s", target_path, e)
             removed.append(str(target_path))
 
     # Also clean up any voice temp files (*.oga, *.wav) in root
-    for p in root.glob("*.oga"):
-        if dry_run:
-            print(f"[dry-run] Would delete voice temp file: {p}")
-        else:
-            p.unlink(missing_ok=True)
-        removed.append(str(p))
+    for ext in ("*.oga", "*.wav"):
+        for p in root.glob(ext):
+            canon = str(p)
+            if canon not in seen:
+                seen.add(canon)
+                if dry_run:
+                    print(f"[dry-run] Would delete voice temp file: {p}")
+                else:
+                    p.unlink(missing_ok=True)
+                removed.append(canon)
 
     return removed
 
@@ -188,6 +238,7 @@ def perform_uninstall(
     project_dir: Path | str | None = None,
 ) -> dict[str, Any]:
     """Perform full or selective uninstallation of Jarvis Antigravity Agent."""
+    target_project_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
     results: dict[str, Any] = {
         "service_stopped": False,
         "skills_unlinked": [],
@@ -206,12 +257,12 @@ def perform_uninstall(
         results["service_stopped"] = stop_and_disable_service(dry_run=dry_run)
 
     results["skills_unlinked"] = unlink_project_skills(
-        project_dir=project_dir, dry_run=dry_run
+        project_dir=target_project_dir, dry_run=dry_run
     )
 
     if purge_personal:
         results["personal_files_removed"] = purge_personal_data(
-            base_dir=project_dir, dry_run=dry_run
+            base_dir=target_project_dir, dry_run=dry_run
         )
 
     if purge_agy:
@@ -230,6 +281,12 @@ def main_cli() -> None:
             "Uninstall Jarvis Antigravity Agent with options to delete "
             "personal configuration and Antigravity (agy) data."
         )
+    )
+    parser.add_argument(
+        "--project-dir",
+        "-d",
+        default=None,
+        help="Path to Jarvis project repository directory (default: auto-detected)",
     )
     parser.add_argument(
         "--purge-personal",
@@ -298,6 +355,7 @@ def main_cli() -> None:
         purge_agy=purge_agy,
         purge_service=True,
         dry_run=args.dry_run,
+        project_dir=args.project_dir,
     )
 
 
