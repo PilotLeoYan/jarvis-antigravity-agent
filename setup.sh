@@ -12,7 +12,7 @@ cd "$SCRIPT_DIR"
 echo "[+] Checking system prerequisites..."
 command -v python3 >/dev/null 2>&1 || { echo >&2 "[-] Error: python3 is required. Aborting."; exit 1; }
 command -v ffmpeg >/dev/null 2>&1 || { echo >&2 "[-] Warning: ffmpeg is not installed. Voice note processing requires ffmpeg (sudo apt install ffmpeg)."; }
-command -v agy >/dev/null 2>&1 || { echo >&2 "[*] Note: Google Antigravity CLI ('agy') not found in PATH. Ensure it is installed in ~/.local/bin or specify its absolute path in config.json."; }
+command -v agy >/dev/null 2>&1 || { echo >&2 "[*] Note: Google Antigravity CLI ('agy') not found in PATH. Ensure it is installed in ~/.local/bin or specify its absolute path in config.yaml."; }
 
 # 2. Install package with uv (preferred) or fallback to pip venv
 if command -v uv >/dev/null 2>&1; then
@@ -29,12 +29,12 @@ else
 fi
 
 # 3. Configuration Scaffolding
-if [ ! -f "config.json" ]; then
-    echo "[+] Creating config.json from template..."
-    cp config.example.json config.json
-    echo "[*] Remember to edit config.json with your Telegram Bot Token and User ID."
+if [ ! -f "config.yaml" ] && [ ! -f "config.yml" ] && [ ! -f "config.json" ]; then
+    echo "[+] Creating config.yaml from template..."
+    cp config.example.yaml config.yaml
+    echo "[*] Remember to edit config.yaml with your Telegram Bot Token and User ID."
 else
-    echo "[+] Configuration file config.json already exists."
+    echo "[+] Configuration file already exists."
 fi
 
 # 4. Cognitive Setup

@@ -72,18 +72,17 @@ jarvis-antigravity-agent/
 ├── README.md                          # Project documentation
 ├── LICENSE                            # MIT License
 ├── pyproject.toml                     # Build system & dependencies
-├── requirements.txt                   # Python runtime dependencies
 ├── setup.sh                           # Automated installation script
-├── config.json                        # Runtime configuration (gitignored)
-├── config.example.json                # Configuration template
+├── config.yaml                        # Runtime configuration (gitignored)
+├── config.example.yaml                # Configuration template (YAML)
 ├── systemd/
 │   └── agy-telegram.service           # User systemd service unit template
 ├── src/
 │   └── jarvis_antigravity_agent/      # Main Python package
 │       ├── __init__.py                # Package entrypoint
-│       ├── constants.py               # All magic values and tunable parameters
+│       ├── constants.py               # Magic values and fixed protocol constants
 │       ├── messages.py                # All user-facing strings (translations file)
-│       ├── config.py                  # Config/state loading and authorization
+│       ├── config.py                  # Pydantic Settings models, state, and authorization
 │       ├── utils.py                   # Message splitting and Telegram helpers
 │       ├── stt.py                     # Speech-to-text (faster-whisper) module
 │       ├── executor.py                # AGY process execution engine
@@ -96,18 +95,6 @@ jarvis-antigravity-agent/
 │   ├── MEMORY.example.md              # Persistent memory structure template
 │   └── ARCHITECTURE.md               # Deep-dive architectural specification
 └── skills/                            # Open Agent Skills library
-    ├── agy-cli/                       # Orchestration & CLI flags guide
-    ├── agy-create-project/            # Scaffolding verified repositories
-    ├── find-skills/                   # Discovering open skills
-    ├── github-agy-auditor/            # Automated code and repo audits
-    ├── merge-reconciler/              # Systematic Git merge conflict resolution
-    ├── ml-research-architect/         # Frontier Deep Learning research framework
-    ├── plan/                          # Architectural implementation planning
-    ├── requesting-code-review/        # Pre-commit sanity & secret inspection
-    ├── simplify-code/                 # Code refactoring & complexity reduction
-    ├── systematic-debugging/          # 4-phase bug elimination methodology
-    ├── telegram-formatting/           # Mobile & Telegram formatting rules
-    └── test-driven-development/       # Red-Green-Refactor TDD cycle
 ```
 
 ---
@@ -116,9 +103,9 @@ jarvis-antigravity-agent/
 
 | Module | Responsibility |
 |---|---|
-| `constants.py` | All tunable values — timeouts, limits, paths, and AGY flags |
+| `constants.py` | Fixed protocol constants, CLI flags, signal codes, and default fallbacks |
 | `messages.py` | All user-facing strings — the single source of truth for every message |
-| `config.py` | JSON config and state loading, authorization check |
+| `config.py` | Pydantic Settings models, YAML/JSON loader, state persistence, authorization |
 | `utils.py` | Message chunking, chunked Telegram replies, typing indicator |
 | `stt.py` | Lazy-loaded `faster-whisper` model, transcription, status queries |
 | `executor.py` | AGY subprocess execution, stream-json parsing, step tracking |
@@ -154,24 +141,35 @@ chmod +x setup.sh
 2. Send `/newbot`, choose a name and a username (e.g., `my_jarvis_bot`).
 3. Copy the HTTP API token generated.
 4. Retrieve your Telegram User ID (e.g., using [@userinfobot](https://t.me/userinfobot)).
-5. Copy and edit the config file:
+5. Copy and edit the configuration file:
 ```bash
-cp config.example.json config.json
+cp config.example.yaml config.yaml
 ```
-```json
-{
-  "bot_token": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ",
-  "allowed_users": [987654321],
-  "default_chat_id": 987654321,
-  "working_directory": "/home/youruser",
-  "agy_path": "agy",
-  "default_flags": [
-    "--dangerously-skip-permissions"
-  ]
-}
+```yaml
+# Telegram Bot & Bridge Configuration
+telegram:
+  bot_token: "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+  allowed_users:
+    - 987654321
+  default_chat_id: 987654321
+
+# Google Antigravity CLI (agy) Execution Engine Configuration
+agy:
+  working_dir: "/home/youruser"
+  agy_path: "agy"
+  default_flags:
+    - "--dangerously-skip-permissions"
+  process_timeout: 360.0
+
+# Speech-to-Text Configuration (faster-whisper)
+whisper:
+  model_size: "base"
+  device: "cpu"
+  compute_type: "int8"
 ```
 
-> The config file location can be overridden with the `AGY_TELEGRAM_CONFIG` environment variable. The bot token can also be provided via `TELEGRAM_BOT_TOKEN`.
+> **Configuration Precedence:** CLI/Runtime overrides > Environment variables (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `AGY__...`, `WHISPER__...`) > `.env` > Config file (`config.yaml` / `config.yml` / `config.json`) > Default values.
+> The configuration path can also be explicitly overridden with `JARVIS_CONFIG_PATH` or `AGY_TELEGRAM_CONFIG`.
 
 ### 4. Running the Bot
 

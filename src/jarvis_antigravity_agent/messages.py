@@ -67,11 +67,11 @@ class Messages:
     NO_ACTIVE_TASK = "\u2139\ufe0f No active task is currently running."
     MISSING_BOT_TOKEN = (
         "Please configure a valid Telegram Bot Token "  # noqa: S105
-        "in config.json or TELEGRAM_BOT_TOKEN."
+        "in config.yaml or TELEGRAM_BOT_TOKEN."
     )
 
     NOTIFIER_MISSING_TOKEN = (
-        "Error: Missing bot_token in config.json or TELEGRAM_BOT_TOKEN "  # noqa: S105
+        "Error: Missing bot_token in config.yaml or TELEGRAM_BOT_TOKEN "  # noqa: S105
         "environment variable."
     )
     NOTIFIER_USAGE = (
@@ -100,5 +100,5 @@ class Messages:
     TOOL_SUBAGENT = "+ \U0001f916 Invoking specialized subagent"
     TOOL_GENERIC = "+ \U0001f527 `{name}`"
 
-    CONFIG_LOAD_ERROR = "Failed to load config.json: {error}"
+    CONFIG_LOAD_ERROR = "Failed to load configuration: {error}"
     STATE_SAVE_ERROR = "Error saving state: {error}"

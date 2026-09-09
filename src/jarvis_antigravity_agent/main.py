@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from jarvis_antigravity_agent.config import (
     build_runtime_config,
+    get_settings,
     load_config,
     load_state,
 )
@@ -12,11 +13,13 @@ from jarvis_antigravity_agent.constants import Constants
 from jarvis_antigravity_agent.handlers import BotHandlers
 from jarvis_antigravity_agent.messages import Messages
 
+_initial_settings = get_settings()
+_log_level = getattr(logging, _initial_settings.system.log_level.upper(), logging.INFO)
 logging.basicConfig(
-    format=Constants.LOG_FORMAT,
-    level=logging.INFO,
+    format=_initial_settings.system.log_format,
+    level=_log_level,
 )
-logger = logging.getLogger(Constants.LOGGER_NAME)
+logger = logging.getLogger(_initial_settings.system.logger_name)
 
 
 def main() -> None:

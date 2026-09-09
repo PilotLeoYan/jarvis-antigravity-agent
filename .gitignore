@@ -1,5 +1,7 @@
 # Sensitive configurations and credentials
 config.json
+config.yaml
+config.yml
 *.pem
 *.key
 *.token

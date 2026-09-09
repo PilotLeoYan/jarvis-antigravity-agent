@@ -29,8 +29,10 @@ class Constants:
     BASE_DIR = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
-    CONFIG_PATH = os.environ.get(
-        "AGY_TELEGRAM_CONFIG", os.path.join(BASE_DIR, "config.json")
+    CONFIG_PATH = (
+        os.environ.get("JARVIS_CONFIG_PATH")
+        or os.environ.get("AGY_TELEGRAM_CONFIG")
+        or os.path.join(BASE_DIR, "config.yaml")
     )
     STATE_PATH = os.path.join(BASE_DIR, "state.json")
     LOGGER_NAME = "jarvis-bridge"

@@ -1,4 +1,17 @@
-from jarvis_antigravity_agent.config import build_runtime_config, is_authorized
+import json
+
+import yaml
+
+from jarvis_antigravity_agent.config import (
+    Settings,
+    build_runtime_config,
+    find_config_path,
+    is_authorized,
+    load_config,
+    load_settings,
+    load_state,
+    save_state,
+)
 
 
 class TestIsAuthorized:
@@ -16,6 +29,10 @@ class TestIsAuthorized:
 
     def test_user_id_type_coercion(self):
         assert is_authorized(0, {"0"}) is True
+
+    def test_list_of_allowed_users(self):
+        assert is_authorized(123, [123, 456]) is True
+        assert is_authorized(789, [123, 456]) is False
 
 
 class TestBuildRuntimeConfig:
@@ -50,28 +67,118 @@ class TestBuildRuntimeConfig:
         assert cfg["working_dir"] == test_dir
 
 
-class TestLoadState:
-    def test_returns_default_state_when_file_missing(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            "jarvis_antigravity_agent.constants.Constants.STATE_PATH",
-            str(tmp_path / "nonexistent.json"),
-        )
-        from jarvis_antigravity_agent import config as cfg_module
+class TestPydanticSettings:
+    def test_default_settings_instantiation(self):
+        settings = Settings()
+        assert settings.telegram.request_timeout > 0
+        assert settings.agy.process_timeout > 0
+        assert settings.whisper.model_size == "base"
+        assert settings.system.logger_name == "jarvis-bridge"
 
-        monkeypatch.setattr(
-            cfg_module.Constants,
-            "STATE_PATH",
-            str(tmp_path / "nonexistent.json"),
-        )
-        state = cfg_module.load_state()
+    def test_load_from_yaml_file(self, tmp_path):
+        yaml_content = {
+            "telegram": {
+                "bot_token": "yaml_bot_token",
+                "allowed_users": [111, 222],
+                "default_chat_id": 999,
+            },
+            "agy": {
+                "working_dir": "/tmp/yaml_work",
+                "process_timeout": 120.0,
+            },
+            "whisper": {
+                "model_size": "medium",
+                "device": "cuda",
+            },
+        }
+        yaml_file = tmp_path / "custom_config.yaml"
+        yaml_file.write_text(yaml.dump(yaml_content))
+
+        settings = load_settings(yaml_file)
+        assert settings.telegram.bot_token == "yaml_bot_token"
+        assert settings.telegram.allowed_users == [111, 222]
+        assert settings.telegram.default_chat_id == 999
+        assert settings.agy.working_dir == "/tmp/yaml_work"
+        assert settings.agy.process_timeout == 120.0
+        assert settings.whisper.model_size == "medium"
+        assert settings.whisper.device == "cuda"
+
+    def test_load_from_json_file(self, tmp_path):
+        json_content = {
+            "telegram": {
+                "bot_token": "json_token",
+                "allowed_users": [333],
+            },
+            "agy": {
+                "working_dir": "/tmp/json_work",
+            },
+        }
+        json_file = tmp_path / "custom_config.json"
+        json_file.write_text(json.dumps(json_content))
+
+        settings = load_settings(json_file)
+        assert settings.telegram.bot_token == "json_token"
+        assert settings.telegram.allowed_users == [333]
+        assert settings.agy.working_dir == "/tmp/json_work"
+
+    def test_flat_legacy_keys_mapping(self):
+        flat_data = {
+            "bot_token": "legacy_flat_token",
+            "allowed_users": [123, 456],
+            "default_chat_id": 789,
+            "working_directory": "/home/legacy",
+            "agy_path": "/usr/bin/agy-custom",
+            "default_flags": ["--flag-a"],
+        }
+        settings = Settings(**flat_data)
+        assert settings.telegram.bot_token == "legacy_flat_token"
+        assert settings.telegram.allowed_users == [123, 456]
+        assert settings.telegram.default_chat_id == 789
+        assert settings.agy.working_dir == "/home/legacy"
+        assert settings.agy.agy_path == "/usr/bin/agy-custom"
+        assert settings.agy.default_flags == ["--flag-a"]
+        # Also test backward-compatibility properties
+        assert settings.bot_token == "legacy_flat_token"
+        assert settings.working_dir == "/home/legacy"
+
+    def test_find_config_path_explicit(self, tmp_path):
+        f = tmp_path / "test.yaml"
+        f.touch()
+        found = find_config_path(f)
+        assert found == f
+
+    def test_find_config_path_env_var(self, tmp_path, monkeypatch):
+        f = tmp_path / "env_config.yml"
+        f.touch()
+        monkeypatch.setenv("JARVIS_CONFIG_PATH", str(f))
+        found = find_config_path()
+        assert found == f
+
+    def test_load_config_helper(self, tmp_path, monkeypatch):
+        yaml_content = {"telegram": {"bot_token": "load_cfg_test"}}
+        f = tmp_path / "config.yaml"
+        f.write_text(yaml.dump(yaml_content))
+        monkeypatch.setenv("JARVIS_CONFIG_PATH", str(f))
+
+        cfg = load_config()
+        assert cfg["telegram"]["bot_token"] == "load_cfg_test"
+
+
+class TestStateManagement:
+    def test_returns_default_state_when_file_missing(self, tmp_path):
+        missing_file = tmp_path / "nonexistent_state.json"
+        state = load_state(missing_file)
         assert state == {"continue_session": False}
 
-    def test_returns_default_on_corrupt_file(self, tmp_path, monkeypatch):
-        state_file = tmp_path / "state.json"
-        state_file.write_text("not valid json")
-
-        from jarvis_antigravity_agent import config as cfg_module
-
-        monkeypatch.setattr(cfg_module.Constants, "STATE_PATH", str(state_file))
-        state = cfg_module.load_state()
+    def test_returns_default_on_corrupt_file(self, tmp_path):
+        corrupt_file = tmp_path / "corrupt_state.json"
+        corrupt_file.write_text("invalid json")
+        state = load_state(corrupt_file)
         assert state == {"continue_session": False}
+
+    def test_save_and_load_state_roundtrip(self, tmp_path):
+        state_file = tmp_path / "saved_state.json"
+        original_state = {"continue_session": True, "last_user": 12345}
+        save_state(original_state, state_file)
+        loaded = load_state(state_file)
+        assert loaded == original_state
