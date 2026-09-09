@@ -177,6 +177,8 @@ async def execute_agy_prompt(
             + runtime_cfg["default_flags"]
             + [Constants.AGY_OUTPUT_FORMAT_FLAG, Constants.AGY_OUTPUT_FORMAT]
         )
+        if runtime_cfg.get("model"):
+            cmd.extend([Constants.AGY_MODEL_FLAG, runtime_cfg["model"]])
         if continue_flag:
             cmd.append(Constants.AGY_CONTINUE_FLAG)
         cmd.extend([Constants.AGY_PROMPT_FLAG, prompt])

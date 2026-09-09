@@ -66,12 +66,21 @@ class TestBuildRuntimeConfig:
         cfg = build_runtime_config({"working_directory": test_dir})
         assert cfg["working_dir"] == test_dir
 
+    def test_model_from_config(self):
+        cfg = build_runtime_config({"agy": {"model": "gemini-2.5-flash"}})
+        assert cfg["model"] == "gemini-2.5-flash"
+
+    def test_default_model_in_runtime_config(self):
+        cfg = build_runtime_config({})
+        assert cfg["model"] == "Gemini 3.1 Pro (High)"
+
 
 class TestPydanticSettings:
     def test_default_settings_instantiation(self):
         settings = Settings()
         assert settings.telegram.request_timeout > 0
         assert settings.agy.process_timeout > 0
+        assert settings.agy.model == "Gemini 3.1 Pro (High)"
         assert settings.whisper.model_size == "base"
         assert settings.system.logger_name == "jarvis-bridge"
 

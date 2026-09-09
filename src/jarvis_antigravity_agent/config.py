@@ -67,6 +67,7 @@ class TelegramSettings(BaseModel):
 
 
 class AgySettings(BaseModel):
+    model: str | None = Field(default=Constants.AGY_DEFAULT_MODEL)
     working_dir: str = Field(default_factory=lambda: Constants.DEFAULT_WORKING_DIR)
     agy_path: str = Field(
         default_factory=lambda: shutil.which("agy") or Constants.AGY_FALLBACK_BIN
@@ -157,6 +158,8 @@ class Settings(BaseSettings):
 
         if "agy_path" in d and "agy_path" not in agy_data:
             agy_data["agy_path"] = d.pop("agy_path")
+        if "model" in d and "model" not in agy_data:
+            agy_data["model"] = d.pop("model")
         if "default_flags" in d and "default_flags" not in agy_data:
             agy_data["default_flags"] = d.pop("default_flags")
         if "process_timeout" in d and "process_timeout" not in agy_data:
@@ -231,6 +234,10 @@ class Settings(BaseSettings):
     @property
     def agy_path(self) -> str:
         return self.agy.agy_path
+
+    @property
+    def model(self) -> str | None:
+        return self.agy.model
 
     @property
     def default_flags(self) -> list[str]:
@@ -322,6 +329,7 @@ def build_runtime_config(
         "allowed_users": {str(u) for u in settings.telegram.allowed_users},
         "working_dir": settings.agy.working_dir,
         "agy_path": settings.agy.agy_path,
+        "model": settings.agy.model,
         "default_flags": settings.agy.default_flags,
         "default_chat_id": settings.telegram.default_chat_id,
         "process_timeout": settings.agy.process_timeout,
