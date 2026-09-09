@@ -155,6 +155,58 @@ def format_mcp_status(config_path: str | Path | None = None) -> str:
     return "\n".join(lines)
 
 
+def list_global_mcp_servers() -> dict[str, dict[str, Any]]:
+    """List global MCP servers from Antigravity/Gemini configuration."""
+    return list_mcp_servers(config_path=DEFAULT_GLOBAL_MCP_PATH)
+
+
+def format_global_mcp_status() -> str:
+    """Generate Markdown status message for global MCP servers in AGY."""
+    target_path = Path(DEFAULT_GLOBAL_MCP_PATH)
+    servers = list_global_mcp_servers()
+
+    # Also detect any installed plugins/tools in ~/.gemini/antigravity/mcp
+    extra_mcp_dirs: list[str] = []
+    antigravity_mcp_dir = Path(os.path.expanduser("~/.gemini/antigravity/mcp"))
+    if antigravity_mcp_dir.is_dir():
+        try:
+            for item in sorted(antigravity_mcp_dir.iterdir()):
+                if item.is_dir() and not item.name.startswith("."):
+                    extra_mcp_dirs.append(item.name)
+        except (OSError, PermissionError):
+            pass
+
+    if not servers and not extra_mcp_dirs:
+        return (
+            "🔌 *Google Antigravity Global MCP Servers*\n\n"
+            f"No global MCP servers configured in `{target_path}`.\n"
+            "_Use `/mcp add <name> <command> [args...]` to register an MCP server._"
+        )
+
+    lines = [
+        f"🔌 *Google Antigravity Global MCP Servers* ({len(servers)} active)",
+        f"_Global config: `{target_path}`_\n",
+    ]
+
+    for s_name, spec in sorted(servers.items()):
+        cmd = spec.get("command", "unknown")
+        args_list = spec.get("args", [])
+        args_str = f" {' '.join(str(a) for a in args_list)}" if args_list else ""
+        env_dict = spec.get("env", {})
+        env_str = f" (env: {len(env_dict)} vars)" if env_dict else ""
+        lines.append(f"• *{s_name}*: `{cmd}{args_str}`{env_str}")
+
+    if extra_mcp_dirs:
+        lines.append("\n📁 *Installed AGY MCP Directory Tools:*")
+        for ed in extra_mcp_dirs:
+            lines.append(f"• `{ed}`")
+
+    lines.append(
+        "\nℹ️ _Global MCP servers are accessible across all Antigravity agent tasks._"
+    )
+    return "\n".join(lines)
+
+
 def main_cli() -> None:
     """CLI entry point for managing MCP servers."""
     parser = argparse.ArgumentParser(

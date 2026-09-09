@@ -14,10 +14,13 @@ from jarvis_antigravity_agent.constants import Constants
 from jarvis_antigravity_agent.executor import execute_agy_prompt, process_lock
 from jarvis_antigravity_agent.mcp import (
     add_mcp_server,
+    format_global_mcp_status,
     format_mcp_status,
     remove_mcp_server,
 )
 from jarvis_antigravity_agent.messages import Messages
+from jarvis_antigravity_agent.quotas import format_quotas_markdown, get_agy_quotas
+from jarvis_antigravity_agent.skills_inspector import format_skills_markdown
 from jarvis_antigravity_agent.stt import stt_status_label, transcribe_audio_file
 from jarvis_antigravity_agent.updater import (
     apply_update,
@@ -126,6 +129,18 @@ class BotHandlers:
                 except Exception as e:
                     logger.debug("Failed to remove temporary voice file: %s", e)
 
+    async def start_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            await update.message.reply_text(Messages.UNAUTHORIZED_ACCESS)
+            return
+        await update.message.reply_text(
+            Messages.START_WELCOME, parse_mode=constants.ParseMode.MARKDOWN
+        )
+
     async def help_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -197,6 +212,40 @@ class BotHandlers:
             load5=load5_str,
             disk_pct=disk_pct,
         )
+        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+
+    async def quotas_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            return
+
+        quota_data = await asyncio.to_thread(get_agy_quotas)
+        msg = format_quotas_markdown(quota_data)
+        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+
+    async def skills_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            return
+
+        msg = await asyncio.to_thread(format_skills_markdown)
+        await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+
+    async def mcps_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            return
+
+        msg = await asyncio.to_thread(format_global_mcp_status)
         await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
 
     async def cancel_command(

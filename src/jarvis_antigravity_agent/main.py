@@ -112,17 +112,21 @@ def main() -> None:
 
     app = Application.builder().token(bot_token).post_init(post_init).build()
 
-    app.add_handler(CommandHandler(["start", "help", "ayuda"], handlers.help_command))
-    app.add_handler(CommandHandler(["new", "nuevo"], handlers.new_command))
-    app.add_handler(CommandHandler(["status", "estado"], handlers.status_command))
-    app.add_handler(CommandHandler(["cancel", "cancelar"], handlers.cancel_command))
+    app.add_handler(CommandHandler(["start"], handlers.start_command))
+    app.add_handler(CommandHandler(["help"], handlers.help_command))
+    app.add_handler(CommandHandler(["new"], handlers.new_command))
+    app.add_handler(CommandHandler(["status"], handlers.status_command))
+    app.add_handler(CommandHandler(["quotas", "quota"], handlers.quotas_command))
+    app.add_handler(CommandHandler(["skills", "globalskills"], handlers.skills_command))
+    app.add_handler(CommandHandler(["mcps", "globalmcps"], handlers.mcps_command))
+    app.add_handler(CommandHandler(["cancel"], handlers.cancel_command))
     app.add_handler(CommandHandler(["boost", "spawn", "agent"], handlers.boost_command))
     app.add_handler(CommandHandler(["agents", "subagents"], handlers.agents_command))
     app.add_handler(
         CommandHandler(["killagent", "cancelagent"], handlers.killagent_command)
     )
     app.add_handler(CommandHandler(["mcp"], handlers.mcp_command))
-    app.add_handler(CommandHandler(["update", "actualizar"], handlers.update_command))
+    app.add_handler(CommandHandler(["update"], handlers.update_command))
     app.add_handler(CommandHandler(["checkupdate"], handlers.checkupdate_command))
 
     app.add_handler(
