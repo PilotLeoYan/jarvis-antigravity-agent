@@ -168,6 +168,13 @@ To enable and run Jarvis continuously as a background daemon:
 systemctl --user enable --now agy-telegram.service
 ```
 
+To reload and start the service on your system:
+```bash
+systemctl --user daemon-reload
+systemctl --user restart agy-telegram.service
+systemctl --user status agy-telegram.service
+```
+
 If configuring manually without `setup.sh`:
 
 ```bash
@@ -201,6 +208,7 @@ Both `./setup.sh` and `make install` automatically:
 2. Symlink all CLI entrypoints into `~/.local/bin/` and apply executable permissions (`chmod +x`).
 3. Deploy `systemd/agy-telegram.service` to `~/.config/systemd/user/agy-telegram.service` with start burst rate limiting (`StartLimitIntervalSec=300`, `StartLimitBurst=5`) and `RestartPreventExitStatus=203` to prevent runaway restart loops if the executable is ever missing.
 4. Reload the user systemd daemon (`systemctl --user daemon-reload`).
+5. Copy custom skills (`telegram-formatting`, `agent-dispatch`, `mcp-management`, etc.) to standard Antigravity user skills directories (`~/.gemini/config/skills` and `~/.agents/skills`) ensuring automatic discovery and prompt injection across sessions.
 
 ---
 
