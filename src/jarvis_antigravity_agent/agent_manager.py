@@ -6,7 +6,7 @@ import shutil
 import sys
 import time
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from jarvis_antigravity_agent.config import build_runtime_config, get_settings
@@ -29,9 +29,21 @@ class SubagentInfo:
     pid: int | None = None
     output: str = ""
     error: str = ""
+    done_event: asyncio.Event = field(default_factory=asyncio.Event)
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            "agent_id": self.agent_id,
+            "name": self.name,
+            "prompt": self.prompt,
+            "status": self.status,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "chat_id": self.chat_id,
+            "pid": self.pid,
+            "output": self.output,
+            "error": self.error,
+        }
 
 
 class SubagentManager:
@@ -93,7 +105,11 @@ class SubagentManager:
         settings = get_settings()
         runtime_cfg = build_runtime_config()
 
-        target_chat = chat_id or runtime_cfg.get("default_chat_id")
+        target_chat = (
+            chat_id
+            or os.environ.get("TELEGRAM_CHAT_ID")
+            or runtime_cfg.get("default_chat_id")
+        )
         target_work_dir = working_dir or runtime_cfg.get(
             "working_dir", Constants.DEFAULT_WORKING_DIR
         )
@@ -102,6 +118,9 @@ class SubagentManager:
             runtime_cfg.get("agy_path")
             or shutil.which("agy")
             or Constants.AGY_FALLBACK_BIN
+        )
+        effective_bot_token = settings.telegram.bot_token or os.environ.get(
+            "TELEGRAM_BOT_TOKEN"
         )
 
         agent_info = SubagentInfo(
@@ -130,7 +149,7 @@ class SubagentManager:
                 cmd=cmd,
                 working_dir=target_work_dir,
                 timeout=timeout,
-                bot_token=settings.telegram.bot_token,
+                bot_token=effective_bot_token,
             )
         )
         self._tasks[agent_id] = task
@@ -230,6 +249,7 @@ class SubagentManager:
             if agent_info.chat_id and bot_token:
                 await self._notify_telegram(agent_info, bot_token)
         finally:
+            agent_info.done_event.set()
             self._processes.pop(agent_id, None)
             self._tasks.pop(agent_id, None)
 
@@ -263,21 +283,40 @@ class SubagentManager:
 
     @staticmethod
     def _extract_response_text(raw_output: str) -> str:
-        """Extract clean result response if output contains stream-json."""
+        """Extract clean result response or agent_response text from stream-json."""
         import json
 
         lines = raw_output.split("\n")
-        for line in reversed(lines):
+        parsed_any_json = False
+        collected_deltas: list[str] = []
+        result_response = ""
+
+        for line in lines:
             line_s = line.strip()
             if line_s.startswith("{") and line_s.endswith("}"):
                 try:
                     data = json.loads(line_s)
-                    if data.get("event") == "result":
+                    parsed_any_json = True
+                    ev = data.get("event")
+                    if ev == "step":
+                        su = data.get("step_update", {})
+                        if su.get("step_type") == "agent_response":
+                            delta = su.get("text_delta", "")
+                            if delta:
+                                collected_deltas.append(delta)
+                    elif ev == "result":
                         resp = str(data.get("result", {}).get("response", "")).strip()
                         if resp:
-                            return resp
+                            result_response = resp
                 except Exception as e:
                     logger.debug("Failed to parse stream json line: %s", e)
+
+        if result_response:
+            return result_response
+        if collected_deltas:
+            return "".join(collected_deltas).strip()
+        if parsed_any_json:
+            return ""
         return raw_output
 
     def format_agents_summary(self) -> str:
@@ -357,9 +396,7 @@ def main_cli() -> None:
         print(f"Spawned subagent '{agent.name}' (ID: {agent.agent_id})")
 
         if args.wait:
-            task = manager._tasks.get(agent.agent_id)
-            if task:
-                await task
+            await agent.done_event.wait()
             print(f"Subagent finished with status: {agent.status}")
             if agent.output:
                 print("\nOutput:")

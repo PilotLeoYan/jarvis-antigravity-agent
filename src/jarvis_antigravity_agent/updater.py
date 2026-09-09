@@ -97,6 +97,32 @@ def check_for_updates(
         return False, "unknown", "unknown", f"Unexpected error: {e}"
 
 
+def _snapshot_protected_files(root: Path) -> dict[str, bytes]:
+    """Capture raw byte content of protected personal configuration files."""
+    snapshots: dict[str, bytes] = {}
+    for rel_path in PROTECTED_RELATIVE_FILES:
+        target = root / rel_path
+        if target.is_file():
+            try:
+                snapshots[rel_path] = target.read_bytes()
+            except Exception as e:
+                logger.warning("Could not snapshot %s: %s", rel_path, e)
+    return snapshots
+
+
+def _restore_protected_files(root: Path, snapshots: dict[str, bytes]) -> None:
+    """Verify and restore any modified or removed protected personal files."""
+    for rel_path, content in snapshots.items():
+        target = root / rel_path
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.is_file() or target.read_bytes() != content:
+                target.write_bytes(content)
+                logger.info("Restored protected file: %s", rel_path)
+        except Exception as e:
+            logger.error("Failed to restore protected file %s: %s", rel_path, e)
+
+
 def apply_update(
     repo_dir: Path | str | None = None,
     remote: str = "origin",
@@ -114,6 +140,7 @@ def apply_update(
     if not has_update:
         return False, f"Already up to date ({local_sha})."
 
+    snapshots = _snapshot_protected_files(root)
     git_bin = shutil.which("git") or "git"
     try:
         # Fast-forward pull
@@ -128,6 +155,7 @@ def apply_update(
         if pull_proc.returncode != 0:
             err = pull_proc.stderr.strip()
             logger.error("Fast-forward merge failed: %s", err)
+            _restore_protected_files(root, snapshots)
             return (
                 False,
                 f"Update failed during merge: {err}\n"
@@ -147,6 +175,9 @@ def apply_update(
             if sync_proc.returncode != 0:
                 logger.warning("uv sync returned non-zero: %s", sync_proc.stderr)
 
+        # Ensure all protected files remain completely untouched
+        _restore_protected_files(root, snapshots)
+
         msg = (
             f"Successfully updated from `{local_sha}` to `{remote_sha}`.\n\n"
             f"*Changelog:*\n{log_summary}\n\n"
@@ -156,6 +187,7 @@ def apply_update(
         return True, msg
 
     except Exception as e:
+        _restore_protected_files(root, snapshots)
         logger.exception("Failed to apply update: %s", e)
         return False, f"Exception applying update: {e}"
 

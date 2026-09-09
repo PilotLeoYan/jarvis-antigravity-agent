@@ -104,3 +104,31 @@ class TestUpdater:
         assert success is False
         assert "Update failed during merge" in msg
         assert "remain untouched" in msg
+
+    @patch("jarvis_antigravity_agent.updater.check_for_updates")
+    @patch("subprocess.run")
+    def test_apply_update_restores_tampered_protected_files(
+        self, mock_run, mock_check, tmp_path: Path
+    ):
+        mock_check.return_value = (True, "old123", "new456", "commit log")
+
+        (tmp_path / ".git").mkdir()
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text("personal_token: 12345")
+        mem_dir = tmp_path / "cognitive"
+        mem_dir.mkdir(parents=True)
+        mem_file = mem_dir / "MEMORY.md"
+        mem_file.write_text("# My Personal Memory")
+
+        def fake_git_run(cmd, **kwargs):
+            if "merge" in cmd:
+                cfg_file.write_text("overwritten_token: 99999")
+                mem_file.unlink()
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = fake_git_run
+
+        success, msg = apply_update(tmp_path)
+        assert success is True
+        assert cfg_file.read_text() == "personal_token: 12345"
+        assert mem_file.read_text() == "# My Personal Memory"

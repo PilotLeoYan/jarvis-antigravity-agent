@@ -61,6 +61,27 @@ class TestSubagentManager:
         raw = "Plain text response from subagent"
         assert SubagentManager._extract_response_text(raw) == raw
 
+    def test_extract_response_text_from_agent_response_deltas(self):
+        l1 = (
+            '{"event": "step", "step_update": {"step_type": "agent_response", '
+            '"state": "ACTIVE", "text_delta": "Hello "}}\n'
+        )
+        l2 = (
+            '{"event": "step", "step_update": {"step_type": "agent_response", '
+            '"state": "ACTIVE", "text_delta": "world!"}}\n'
+        )
+        l3 = '{"event": "result", "result": {"response": ""}}\n'
+        raw = f"{l1}{l2}{l3}"
+        assert SubagentManager._extract_response_text(raw) == "Hello world!"
+
+    @pytest.mark.anyio
+    async def test_spawn_agent_inherits_telegram_chat_id_env(self, monkeypatch):
+        manager = SubagentManager()
+        monkeypatch.setenv("TELEGRAM_CHAT_ID", "777888")
+        with patch("asyncio.create_subprocess_exec", side_effect=RuntimeError("stop")):
+            agent = await manager.spawn_agent(prompt="test env chat id")
+            assert str(agent.chat_id) == "777888"
+
     @pytest.mark.anyio
     async def test_spawn_and_cancel_agent(self):
         import asyncio

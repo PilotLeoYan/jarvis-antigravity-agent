@@ -102,3 +102,9 @@ update:
 
   # Automatically restart the service after applying an update
   auto_restart: true
+
+  # Interval in seconds to automatically check for upstream updates (default: 3600 = 1 hr)
+  check_interval_seconds: 3600.0
+
+  # If true, automatically apply updates and restart without requiring /update command
+  auto_apply: false

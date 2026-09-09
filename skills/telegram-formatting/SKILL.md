@@ -5,7 +5,7 @@ description: Verified mobile and Telegram formatting standards for optimal visua
 
 # Telegram Formatting Standards
 
-Empirically verified formatting rules to ensure optimal legibilidad on Telegram mobile and desktop clients:
+Empirically verified formatting rules to ensure optimal readability on Telegram mobile and desktop clients:
 
 ## Supported Formatting Elements
 - **Bold**: `**text**` (or `*text*` depending on markdown mode).

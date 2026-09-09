@@ -23,6 +23,15 @@ def find_mcp_config_path(explicit_path: str | Path | None = None) -> Path:
     if env_path:
         return Path(env_path)
 
+    try:
+        from jarvis_antigravity_agent.config import get_settings
+
+        cfg_path = get_settings().mcp.config_path
+        if cfg_path:
+            return Path(os.path.expanduser(cfg_path))
+    except Exception as e:
+        logger.debug("Could not resolve mcp path from settings: %s", e)
+
     # If workspace-specific config exists in current directory, prefer it
     workspace_p = Path(WORKSPACE_MCP_PATH)
     if workspace_p.is_file():
@@ -162,7 +171,16 @@ def main_cli() -> None:
     add_parser.add_argument(
         "command", help="Command executable (e.g. npx, uvx, docker)"
     )
-    add_parser.add_argument("args", nargs="*", default=[], help="Command arguments")
+    add_parser.add_argument(
+        "--env",
+        "-e",
+        action="append",
+        default=[],
+        help="Environment variable in KEY=VALUE format (can be repeated)",
+    )
+    add_parser.add_argument(
+        "args", nargs=argparse.REMAINDER, default=[], help="Command arguments"
+    )
 
     # remove
     rm_parser = subparsers.add_parser("remove", help="Remove an MCP server")
@@ -173,7 +191,29 @@ def main_cli() -> None:
     if args.action == "list":
         print(format_mcp_status())
     elif args.action == "add":
-        success = add_mcp_server(args.name, args.command, args.args)
+        cleaned_args: list[str] = []
+        all_env = list(args.env or [])
+        i = 0
+        while i < len(args.args):
+            item = args.args[i]
+            if item in {"-e", "--env"} and i + 1 < len(args.args):
+                all_env.append(args.args[i + 1])
+                i += 2
+            elif item.startswith("--env="):
+                all_env.append(item.split("=", 1)[1])
+                i += 1
+            else:
+                cleaned_args.append(item)
+                i += 1
+
+        env_dict: dict[str, str] = {}
+        for ev in all_env:
+            if "=" in ev:
+                k, v = ev.split("=", 1)
+                env_dict[k.strip()] = v.strip()
+        success = add_mcp_server(
+            args.name, args.command, cleaned_args, env=env_dict if env_dict else None
+        )
         if success:
             print(f"Successfully registered MCP server: {args.name}")
         else:

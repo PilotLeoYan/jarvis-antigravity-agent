@@ -195,11 +195,16 @@ async def execute_agy_prompt(
         path_extra = runtime_cfg.get("path_extra", Constants.PATH_EXTRA)
         local_bin = runtime_cfg.get("local_bin", Constants.AGY_LOCAL_BIN)
 
+        chat_id = update.effective_chat.id if update.effective_chat else 0
+
         env = os.environ.copy()
         env["PATH"] = f"{local_bin}:{path_extra}:{env.get('PATH', '')}"
+        if runtime_cfg.get("bot_token"):
+            env["TELEGRAM_BOT_TOKEN"] = str(runtime_cfg["bot_token"])
+        if chat_id:
+            env["TELEGRAM_CHAT_ID"] = str(chat_id)
 
         stop_typing = asyncio.Event()
-        chat_id = update.effective_chat.id if update.effective_chat else 0
         typing_task = asyncio.create_task(keep_typing(chat_id, context, stop_typing))
 
         status_msg: Message | None = None
