@@ -10,7 +10,7 @@ Jarvis maintains long-term cognitive continuity across sessions and restarts thr
 ## Purpose of Persistent Memory
 
 While conversational context is maintained via `agy -c` within an active session, persistent memory survives:
-- Full conversation resets (`/new` or `/nuevo`).
+- Full conversation resets (`/new`).
 - Daemon restarts and system reboots.
 - Subagent dispatches where isolated context is required.
 

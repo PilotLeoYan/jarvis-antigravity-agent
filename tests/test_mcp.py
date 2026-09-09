@@ -129,3 +129,22 @@ class TestMcpManager:
         assert servers["my-server"]["command"] == "python3"
         assert servers["my-server"]["args"] == ["-m", "srv"]
         assert servers["my-server"]["env"] == {"API_KEY": "secret123"}
+
+    def test_global_mcp_status_formatting(self, monkeypatch, tmp_path: Path):
+        from jarvis_antigravity_agent.mcp import (
+            format_global_mcp_status,
+            list_global_mcp_servers,
+        )
+
+        global_cfg = tmp_path / "global_mcp.json"
+        monkeypatch.setattr(
+            "jarvis_antigravity_agent.mcp.DEFAULT_GLOBAL_MCP_PATH", str(global_cfg)
+        )
+        add_mcp_server("context7", "npx", ["-y", "context7"], config_path=global_cfg)
+
+        servers = list_global_mcp_servers()
+        assert "context7" in servers
+
+        msg = format_global_mcp_status()
+        assert "Google Antigravity Global MCP Servers" in msg
+        assert "context7" in msg

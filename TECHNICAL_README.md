@@ -80,7 +80,7 @@ Settings are managed via Pydantic BaseSettings in config.py, adhering to the fol
 
 ## 5. State Management and Fault Tolerance
 
-- Session State: Maintained in state.json. When an agy execution completes successfully, continue_session is set to true. When the user issues /new or /nuevo, continue_session is set to false, resetting the conversational context.
+- Session State: Maintained in state.json. When an agy execution completes successfully, continue_session is set to true. When the user issues /new, continue_session is set to false, resetting the conversational context.
 - Corrupted State Handling: If state.json is unreadable or malformed, the system falls back to default state parameters rather than aborting.
 - Safety Timeouts: Process execution is bounded by process_timeout (default 360 seconds) and communicate_timeout (default 10 seconds). Exceeding these thresholds terminates the subprocess via SIGKILL and notifies the user.
 - Restart Codes: Return codes -15, -9, 143, and 137 are treated as intentional lifecycle events, alerting the user that the bridge is reloading rather than treating the termination as a fatal failure.
