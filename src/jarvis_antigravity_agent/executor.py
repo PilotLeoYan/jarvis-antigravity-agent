@@ -44,9 +44,21 @@ async def _process_stream(
     update: Update,
     status_msg: Message | None,
     step_items: list[str],
+    runtime_cfg: dict[str, Any] | None = None,
 ) -> tuple[str, str, list[str], list[str]]:
     if process.stdout is None:
         raise RuntimeError("Process stdout stream is not available")
+
+    edit_throttle = (
+        runtime_cfg.get("edit_throttle_seconds", Constants.EDIT_THROTTLE_SECONDS)
+        if runtime_cfg
+        else Constants.EDIT_THROTTLE_SECONDS
+    )
+    max_status = (
+        runtime_cfg.get("max_status_items", Constants.MAX_STATUS_ITEMS)
+        if runtime_cfg
+        else Constants.MAX_STATUS_ITEMS
+    )
 
     final_response_text = ""
     current_step_text: dict[int, str] = {}
@@ -104,11 +116,11 @@ async def _process_stream(
 
                 now = time.time()
                 elapsed_since_edit = now - last_edit_time
-                throttle_passed = elapsed_since_edit >= Constants.EDIT_THROTTLE_SECONDS
+                throttle_passed = elapsed_since_edit >= edit_throttle
                 if status_msg is not None and throttle_passed:
                     last_edit_time = now
                     try:
-                        display = step_items[-Constants.MAX_STATUS_ITEMS :]
+                        display = step_items[-max_status:]
                         await status_msg.edit_text(
                             Messages.TASK_PROGRESS + "\n".join(display),
                             parse_mode=constants.ParseMode.MARKDOWN,
@@ -169,10 +181,20 @@ async def execute_agy_prompt(
             cmd.append(Constants.AGY_CONTINUE_FLAG)
         cmd.extend([Constants.AGY_PROMPT_FLAG, prompt])
 
-        env = os.environ.copy()
-        env["PATH"] = (
-            f"{Constants.AGY_LOCAL_BIN}:{Constants.PATH_EXTRA}:{env.get('PATH', '')}"
+        process_timeout = float(
+            runtime_cfg.get("process_timeout", Constants.AGY_PROCESS_TIMEOUT)
         )
+        communicate_timeout = float(
+            runtime_cfg.get("communicate_timeout", Constants.AGY_COMMUNICATE_TIMEOUT)
+        )
+        max_completed = int(
+            runtime_cfg.get("max_completed_items", Constants.MAX_COMPLETED_ITEMS)
+        )
+        path_extra = runtime_cfg.get("path_extra", Constants.PATH_EXTRA)
+        local_bin = runtime_cfg.get("local_bin", Constants.AGY_LOCAL_BIN)
+
+        env = os.environ.copy()
+        env["PATH"] = f"{local_bin}:{path_extra}:{env.get('PATH', '')}"
 
         stop_typing = asyncio.Event()
         chat_id = update.effective_chat.id if update.effective_chat else 0
@@ -212,18 +234,20 @@ async def execute_agy_prompt(
                     raw_output_lines,
                     dispatched_intermediate_texts,
                 ) = await asyncio.wait_for(
-                    _process_stream(current_process, update, status_msg, step_items),
-                    timeout=Constants.AGY_PROCESS_TIMEOUT,
+                    _process_stream(
+                        current_process, update, status_msg, step_items, runtime_cfg
+                    ),
+                    timeout=process_timeout,
                 )
                 _, stderr = await asyncio.wait_for(
                     current_process.communicate(),
-                    timeout=Constants.AGY_COMMUNICATE_TIMEOUT,
+                    timeout=communicate_timeout,
                 )
             except asyncio.TimeoutError:
                 if current_process and current_process.returncode is None:
                     current_process.kill()
                 timeout_msg = Messages.TIMEOUT_EXCEEDED_SAFETY.format(
-                    timeout=int(Constants.AGY_PROCESS_TIMEOUT)
+                    timeout=int(process_timeout)
                 )
                 if status_msg is not None:
                     try:
@@ -234,9 +258,7 @@ async def execute_agy_prompt(
                         logger.debug("Failed to edit timeout message: %s", e)
                 elif update.message is not None:
                     await update.message.reply_text(
-                        Messages.TIMEOUT_EXCEEDED.format(
-                            timeout=int(Constants.AGY_PROCESS_TIMEOUT)
-                        )
+                        Messages.TIMEOUT_EXCEEDED.format(timeout=int(process_timeout))
                     )
                 return
 
@@ -250,7 +272,7 @@ async def execute_agy_prompt(
             if status_msg is not None:
                 try:
                     if step_items:
-                        display = step_items[-Constants.MAX_COMPLETED_ITEMS :]
+                        display = step_items[-max_completed:]
                         final_status = Messages.COMPLETED_STEPS + "\n".join(display)
                     else:
                         final_status = Messages.TASK_COMPLETED
