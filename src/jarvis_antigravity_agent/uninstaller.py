@@ -114,6 +114,18 @@ def stop_and_disable_service(
     return success
 
 
+def _is_subpath(child: Path, parent: Path) -> bool:
+    """Check if child resolves inside parent directory without false prefix matches."""
+    try:
+        return child.resolve().is_relative_to(parent.resolve())
+    except Exception:
+        try:
+            child.resolve().relative_to(parent.resolve())
+            return True
+        except ValueError:
+            return False
+
+
 def unlink_project_skills(
     project_dir: Path | str | None = None,
     skills_target_dir: str | list[str] | None = None,
@@ -142,7 +154,7 @@ def unlink_project_skills(
             if item.is_symlink():
                 try:
                     resolved = item.resolve()
-                    if str(resolved).startswith(str(base_dir)):
+                    if _is_subpath(resolved, base_dir):
                         if dry_run:
                             print(
                                 f"[dry-run] Would remove skill symlink: "
@@ -176,7 +188,7 @@ def unlink_project_binaries(
         if target.is_symlink():
             try:
                 resolved = target.resolve()
-                if str(resolved).startswith(str(base_dir)):
+                if _is_subpath(resolved, base_dir):
                     if dry_run:
                         print(
                             f"[dry-run] Would remove binary symlink: "
@@ -190,6 +202,38 @@ def unlink_project_binaries(
                 logger.debug("Failed checking binary symlink %s: %s", target, e)
 
     return unlinked
+
+
+def link_project_binaries(
+    project_dir: Path | str | None = None,
+    bin_dir: Path | str | None = None,
+) -> list[str]:
+    """Create symlinks in ~/.local/bin pointing to project virtualenv entrypoints."""
+    base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
+    target_bin = Path(bin_dir or os.path.expanduser("~/.local/bin")).resolve()
+    target_bin.mkdir(parents=True, exist_ok=True)
+
+    venv_bin = base_dir / ".venv" / "bin"
+    if not venv_bin.is_dir():
+        venv_bin = base_dir / "venv" / "bin"
+    if not venv_bin.is_dir():
+        return []
+
+    linked: list[str] = []
+    for binary_name in DEFAULT_BINARIES:
+        src = venv_bin / binary_name
+        if src.is_file():
+            dst = target_bin / binary_name
+            try:
+                if dst.is_symlink() or dst.exists():
+                    dst.unlink()
+                dst.symlink_to(src)
+                dst.chmod(0o755)
+                linked.append(binary_name)
+            except Exception as e:
+                logger.debug("Failed creating symlink %s -> %s: %s", dst, src, e)
+
+    return linked
 
 
 def purge_personal_data(

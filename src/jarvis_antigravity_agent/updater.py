@@ -178,6 +178,16 @@ def apply_update(
         # Ensure all protected files remain completely untouched
         _restore_protected_files(root, snapshots)
 
+        # Refresh binary symlinks in ~/.local/bin to guarantee executable entrypoints
+        try:
+            from jarvis_antigravity_agent.uninstaller import link_project_binaries
+
+            link_project_binaries(project_dir=root)
+        except Exception as e:
+            logger.debug(
+                "Non-fatal: failed refreshing binary symlinks during update: %s", e
+            )
+
         msg = (
             f"Successfully updated from `{local_sha}` to `{remote_sha}`.\n\n"
             f"*Changelog:*\n{log_summary}\n\n"

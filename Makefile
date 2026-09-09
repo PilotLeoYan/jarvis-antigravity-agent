@@ -1,7 +1,7 @@
 .PHONY: run format lint fix test check install
 
 run:
-	uv run python -m src
+	uv run python -m jarvis_antigravity_agent
 
 format:
 	uv run ruff format .
@@ -28,3 +28,6 @@ install:
 	ln -sf $(CURDIR)/.venv/bin/jarvis-mcp $(HOME)/.local/bin/jarvis-mcp
 	ln -sf $(CURDIR)/.venv/bin/jarvis-update $(HOME)/.local/bin/jarvis-update
 	ln -sf $(CURDIR)/.venv/bin/jarvis-uninstall $(HOME)/.local/bin/jarvis-uninstall
+	mkdir -p $(HOME)/.config/systemd/user
+	cp $(CURDIR)/systemd/agy-telegram.service $(HOME)/.config/systemd/user/agy-telegram.service
+	command -v systemctl >/dev/null 2>&1 && systemctl --user daemon-reload 2>/dev/null || true
