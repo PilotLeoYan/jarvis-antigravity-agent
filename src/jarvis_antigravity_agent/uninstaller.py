@@ -164,18 +164,21 @@ def unlink_project_skills(
                         else:
                             item.unlink()
                             print(f"[+] Removed skill symlink: {item.name}")
-                        unlinked.append(item.name)
+                        if item.name not in unlinked:
+                            unlinked.append(item.name)
                 except Exception as e:
                     logger.debug("Failed checking symlink %s: %s", item, e)
             elif item.is_dir() and repo_skills.is_dir():
                 try:
-                    if (repo_skills / item.name).is_dir():
+                    repo_skill = repo_skills / item.name
+                    if repo_skill.is_dir() and (repo_skill / "SKILL.md").is_file():
                         if dry_run:
                             print(f"[dry-run] Would remove skill directory: {item}")
                         else:
                             shutil.rmtree(item)
                             print(f"[+] Removed skill directory: {item.name}")
-                        unlinked.append(item.name)
+                        if item.name not in unlinked:
+                            unlinked.append(item.name)
                 except Exception as e:
                     logger.debug("Failed checking skill directory %s: %s", item, e)
 
@@ -272,7 +275,7 @@ def copy_project_skills(
         target_path = Path(s_dir)
         target_path.mkdir(parents=True, exist_ok=True)
         for skill_dir in sorted(repo_skills.iterdir()):
-            if skill_dir.is_dir():
+            if skill_dir.is_dir() and (skill_dir / "SKILL.md").is_file():
                 dest = target_path / skill_dir.name
                 try:
                     if dest.is_symlink() or dest.is_file():

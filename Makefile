@@ -28,11 +28,13 @@ install:
 	ln -sf $(CURDIR)/.venv/bin/jarvis-mcp $(HOME)/.local/bin/jarvis-mcp
 	ln -sf $(CURDIR)/.venv/bin/jarvis-update $(HOME)/.local/bin/jarvis-update
 	ln -sf $(CURDIR)/.venv/bin/jarvis-uninstall $(HOME)/.local/bin/jarvis-uninstall
+	chmod +x $(HOME)/.local/bin/jarvis-antigravity-agent $(HOME)/.local/bin/jarvis-send-message $(HOME)/.local/bin/jarvis-spawn-agent $(HOME)/.local/bin/jarvis-mcp $(HOME)/.local/bin/jarvis-update $(HOME)/.local/bin/jarvis-uninstall 2>/dev/null || true
 	mkdir -p $(HOME)/.config/systemd/user
 	cp $(CURDIR)/systemd/agy-telegram.service $(HOME)/.config/systemd/user/agy-telegram.service
+	chmod 644 $(HOME)/.config/systemd/user/agy-telegram.service 2>/dev/null || true
 	mkdir -p $(HOME)/.gemini/config/skills $(HOME)/.agents/skills
 	for skill in $(CURDIR)/skills/*; do \
-		if [ -d "$$skill" ]; then \
+		if [ -d "$$skill" ] && [ -f "$$skill/SKILL.md" ]; then \
 			sname=$$(basename "$$skill"); \
 			rm -rf "$(HOME)/.gemini/config/skills/$$sname"; \
 			cp -r "$$skill" "$(HOME)/.gemini/config/skills/$$sname"; \

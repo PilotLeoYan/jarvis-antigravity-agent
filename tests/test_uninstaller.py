@@ -157,6 +157,80 @@ class TestUninstaller:
         copied = copy_project_skills(project_dir=empty_repo)
         assert copied == []
 
+    def test_copy_project_skills_ignores_non_skill_dirs(self, tmp_path: Path):
+        repo_dir = tmp_path / "jarvis_repo"
+        # Valid skill
+        (repo_dir / "skills" / "telegram-formatting").mkdir(parents=True)
+        (repo_dir / "skills" / "telegram-formatting" / "SKILL.md").write_text(
+            "---\nname: telegram-formatting\n---\n"
+        )
+        # Non-skill directory (no SKILL.md)
+        (repo_dir / "skills" / "__pycache__").mkdir(parents=True)
+        (repo_dir / "skills" / "__pycache__" / "temp.pyc").write_text("fake")
+
+        target = tmp_path / "target"
+        target.mkdir()
+
+        copied = copy_project_skills(
+            project_dir=repo_dir,
+            skills_target_dirs=[str(target)],
+        )
+
+        assert copied == ["telegram-formatting"]
+        assert (target / "telegram-formatting").is_dir()
+        assert not (target / "__pycache__").exists()
+
+    def test_unlink_project_skills_deduplication_across_multiple_dirs(
+        self, tmp_path: Path
+    ):
+        repo_dir = tmp_path / "my_repo"
+        repo_skill = repo_dir / "skills" / "telegram-formatting"
+        repo_skill.mkdir(parents=True)
+        (repo_skill / "SKILL.md").write_text("---\nname: telegram-formatting\n---\n")
+
+        # Create multiple target dirs
+        target1 = tmp_path / "agents_skills"
+        target2 = tmp_path / "gemini_skills"
+        target1.mkdir()
+        target2.mkdir()
+
+        copied_skill1 = target1 / "telegram-formatting"
+        copied_skill1.mkdir()
+        (copied_skill1 / "SKILL.md").write_text("---\nname: telegram-formatting\n---\n")
+
+        copied_skill2 = target2 / "telegram-formatting"
+        copied_skill2.mkdir()
+        (copied_skill2 / "SKILL.md").write_text("---\nname: telegram-formatting\n---\n")
+
+        removed = unlink_project_skills(
+            project_dir=repo_dir,
+            skills_target_dir=[str(target1), str(target2)],
+            dry_run=False,
+        )
+
+        # Must not contain duplicates
+        assert removed == ["telegram-formatting"]
+        assert not copied_skill1.exists()
+        assert not copied_skill2.exists()
+
+    def test_unlink_project_skills_ignores_non_skill_dirs(self, tmp_path: Path):
+        repo_dir = tmp_path / "my_repo"
+        # Non-skill folder in repo skills
+        (repo_dir / "skills" / "random_folder").mkdir(parents=True)
+
+        target_dir = tmp_path / "target"
+        target_dir.mkdir()
+        folder_in_target = target_dir / "random_folder"
+        folder_in_target.mkdir()
+
+        removed = unlink_project_skills(
+            project_dir=repo_dir,
+            skills_target_dir=str(target_dir),
+            dry_run=False,
+        )
+        assert removed == []
+        assert folder_in_target.exists()
+
     def test_unlink_project_binaries(self, tmp_path: Path):
         repo_dir = tmp_path / "jarvis_repo"
         repo_bin = repo_dir / ".venv" / "bin"

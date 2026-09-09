@@ -105,6 +105,14 @@ def main() -> None:
         logger.error(Messages.MISSING_BOT_TOKEN)
         sys.exit(1)
 
+    # Ensure custom skills are synchronized to standard AGY user locations
+    try:
+        from jarvis_antigravity_agent.uninstaller import copy_project_skills
+
+        copy_project_skills()
+    except Exception as e:
+        logger.debug("Non-fatal: failed syncing project skills on startup: %s", e)
+
     handlers = BotHandlers(runtime_cfg, state)
 
     async def post_init(application: Application) -> None:
