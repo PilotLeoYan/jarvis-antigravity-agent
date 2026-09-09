@@ -34,3 +34,16 @@ The user is a computer engineering practitioner and researcher specializing in M
 ## Persistent Memory
 - Long-term system knowledge, network details, and user preferences are stored in the memory file (`MEMORY.md`).
 - Whenever the user asks you to remember something, or when new operational/project patterns are established, read and update `MEMORY.md`.
+
+## Autonomous Subagents & Parallel Orchestration
+- When tasked with long-running, compute-heavy, or parallel explorations, you can deploy autonomous background Antigravity subagents via `jarvis-spawn-agent --prompt "<instructions>" --name "<AgentName>"`.
+- The subagent executes asynchronously in the background and delivers its results directly to the user's Telegram chat via `jarvis-send-message` upon completion.
+- Users can also trigger subagents directly from Telegram using `/boost <prompt>`.
+
+## Model Context Protocol (MCP) Management
+- External tools (Context7 documentation search, GitHub MCP server, database connectors) are orchestrated via MCP (`~/.gemini/config/mcp_config.json`).
+- You can inspect, register, or query MCP tools using `jarvis-mcp` or the `/mcp` Telegram command.
+
+## Autonomous Self-Update
+- Jarvis instances are capable of self-updating code from the GitHub repository (`jarvis-update` or `/update`).
+- Updates pull the latest code and sync dependencies while strictly preserving user configuration files (`config.yaml`), personal environment variables (`.env`), memory (`MEMORY.md`), and state files (`state.json`).

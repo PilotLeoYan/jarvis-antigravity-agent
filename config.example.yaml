@@ -85,3 +85,20 @@ system:
 
   # Logging level: "DEBUG", "INFO", "WARNING", "ERROR"
   log_level: "INFO"
+
+# Model Context Protocol (MCP) Configuration
+mcp:
+  # Path to MCP JSON configuration file (defaults to ~/.gemini/config/mcp_config.json)
+  # Can also be set via MCP_CONFIG_PATH environment variable.
+  config_path: "~/.gemini/config/mcp_config.json"
+
+# Autonomous Self-Update Configuration
+update:
+  # Git remote repository name
+  remote: "origin"
+
+  # Branch to track for updates
+  branch: "main"
+
+  # Automatically restart the service after applying an update
+  auto_restart: true

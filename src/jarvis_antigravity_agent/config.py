@@ -98,6 +98,16 @@ class SystemSettings(BaseModel):
     log_format: str = Constants.LOG_FORMAT
 
 
+class McpSettings(BaseModel):
+    config_path: str | None = None
+
+
+class UpdateSettings(BaseModel):
+    remote: str = "origin"
+    branch: str = "main"
+    auto_restart: bool = True
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",
@@ -110,6 +120,8 @@ class Settings(BaseSettings):
     agy: AgySettings = Field(default_factory=AgySettings)
     whisper: WhisperSettings = Field(default_factory=WhisperSettings)
     system: SystemSettings = Field(default_factory=SystemSettings)
+    mcp: McpSettings = Field(default_factory=McpSettings)
+    update: UpdateSettings = Field(default_factory=UpdateSettings)
 
     @model_validator(mode="before")
     @classmethod

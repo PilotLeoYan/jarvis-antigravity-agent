@@ -37,8 +37,11 @@ class Messages:
         "Transcribed locally via Whisper (0 token cost, 100% private).\n\n"
         "\U0001f4cb *Commands:*\n"
         "\u2022 `/new` or `/nuevo` \u2014 Reset conversational context.\n"
-        "\u2022 `/status` or `/estado` \u2014 "
-        "Inspect system load, STT status, and current session.\n"
+        "\u2022 `/status` or `/estado` \u2014 Inspect system and STT status.\n"
+        "\u2022 `/boost <prompt>` or `/spawn` \u2014 Deploy autonomous subagent.\n"
+        "\u2022 `/agents` \u2014 List active and recent background subagents.\n"
+        "\u2022 `/mcp` \u2014 Inspect and manage Model Context Protocol servers.\n"
+        "\u2022 `/update` \u2014 Safe self-update from GitHub repository.\n"
         "\u2022 `/cancel` or `/cancelar` \u2014 Abort currently executing task.\n"
         "\u2022 `/help` or `/ayuda` \u2014 Display this operational guide.\n\n"
         "Send a message or voice note to begin."
@@ -102,3 +105,29 @@ class Messages:
 
     CONFIG_LOAD_ERROR = "Failed to load configuration: {error}"
     STATE_SAVE_ERROR = "Error saving state: {error}"
+
+    SUBAGENT_SPAWNED = (
+        "🚀 *Autonomous Subagent Dispatched*\n\n"
+        "• Name: *{name}*\n"
+        "• Agent ID: `{agent_id}`\n"
+        "• Task: _{prompt}_\n\n"
+        "_The agent is executing independently in the background. "
+        "You will be notified upon completion._"
+    )
+    SUBAGENT_USAGE = (
+        "ℹ️ *Usage:* `/boost <task prompt>` or `/spawn <task prompt>`\n"
+        "Deploys an autonomous background AGY subagent."
+    )
+    SUBAGENT_KILLED = "🛑 *Subagent Cancelled:* `{agent_id}`"
+    SUBAGENT_NOT_FOUND = "⚠️ Subagent `{agent_id}` not found or not active."
+
+    UPDATE_CHECKING = "🔍 *Checking for updates on GitHub...*"
+    UPDATE_APPLYING = "📥 *Applying code update and syncing dependencies...*"
+    UPDATE_FAILED = "❌ *Update failed:*\n{error}"
+
+    MCP_USAGE = (
+        "ℹ️ *MCP Commands:*\n"
+        "• `/mcp` or `/mcp list` — Show registered servers\n"
+        "• `/mcp add <name> <command> [args...]` — Add or update server\n"
+        "• `/mcp remove <name>` — Remove server"
+    )
