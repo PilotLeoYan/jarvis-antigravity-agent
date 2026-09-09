@@ -44,6 +44,15 @@ DEFAULT_AGY_DIRECTORIES = [
     os.path.expanduser("~/.antigravity"),
 ]
 
+DEFAULT_BINARIES = [
+    "jarvis-antigravity-agent",
+    "jarvis-send-message",
+    "jarvis-spawn-agent",
+    "jarvis-mcp",
+    "jarvis-update",
+    "jarvis-uninstall",
+]
+
 
 def stop_and_disable_service(
     service_name: str = SERVICE_NAME,
@@ -149,6 +158,40 @@ def unlink_project_skills(
     return unlinked
 
 
+def unlink_project_binaries(
+    project_dir: Path | str | None = None,
+    bin_dir: Path | str | None = None,
+    dry_run: bool = False,
+) -> list[str]:
+    """Remove symlinks in ~/.local/bin pointing to this project repository."""
+    base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
+    target_bin = Path(bin_dir or os.path.expanduser("~/.local/bin")).resolve()
+    if not target_bin.is_dir():
+        return []
+
+    unlinked: list[str] = []
+
+    for binary_name in DEFAULT_BINARIES:
+        target = target_bin / binary_name
+        if target.is_symlink():
+            try:
+                resolved = target.resolve()
+                if str(resolved).startswith(str(base_dir)):
+                    if dry_run:
+                        print(
+                            f"[dry-run] Would remove binary symlink: "
+                            f"{target} -> {resolved}"
+                        )
+                    else:
+                        target.unlink()
+                        print(f"[+] Removed binary symlink: {target.name}")
+                    unlinked.append(target.name)
+            except Exception as e:
+                logger.debug("Failed checking binary symlink %s: %s", target, e)
+
+    return unlinked
+
+
 def purge_personal_data(
     base_dir: Path | str | None = None,
     extra_files: list[str] | None = None,
@@ -242,6 +285,7 @@ def perform_uninstall(
     results: dict[str, Any] = {
         "service_stopped": False,
         "skills_unlinked": [],
+        "binaries_unlinked": [],
         "personal_files_removed": [],
         "agy_dirs_purged": [],
     }
@@ -257,6 +301,10 @@ def perform_uninstall(
         results["service_stopped"] = stop_and_disable_service(dry_run=dry_run)
 
     results["skills_unlinked"] = unlink_project_skills(
+        project_dir=target_project_dir, dry_run=dry_run
+    )
+
+    results["binaries_unlinked"] = unlink_project_binaries(
         project_dir=target_project_dir, dry_run=dry_run
     )
 

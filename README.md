@@ -76,12 +76,27 @@ If you prefer installing dependencies manually with `uv`:
 uv sync
 ```
 
-This installs all dependencies and creates the executable entrypoints:
+To link the executable entrypoints (`jarvis-antigravity-agent`, `jarvis-send-message`, etc.) into `~/.local/bin`:
+
+```bash
+make install
+# Or manually create symlinks:
+mkdir -p ~/.local/bin
+ln -sf "$(pwd)/.venv/bin/jarvis-antigravity-agent" ~/.local/bin/
+ln -sf "$(pwd)/.venv/bin/jarvis-send-message" ~/.local/bin/
+ln -sf "$(pwd)/.venv/bin/jarvis-spawn-agent" ~/.local/bin/
+ln -sf "$(pwd)/.venv/bin/jarvis-mcp" ~/.local/bin/
+ln -sf "$(pwd)/.venv/bin/jarvis-update" ~/.local/bin/
+ln -sf "$(pwd)/.venv/bin/jarvis-uninstall" ~/.local/bin/
+```
+
+This ensures the entrypoints are accessible in your `$PATH` and available for the systemd service daemon:
 - `jarvis-antigravity-agent` (Telegram bridge daemon)
 - `jarvis-send-message` (CLI alert notifier)
 - `jarvis-spawn-agent` (autonomous subagent runner)
 - `jarvis-mcp` (MCP server manager)
 - `jarvis-update` (safe self-updater)
+- `jarvis-uninstall` (safe uninstaller)
 
 ---
 
@@ -145,7 +160,15 @@ export MCP_CONFIG_PATH="$HOME/.gemini/config/mcp_config.json"
 
 ### 3. Running as a Systemd Service
 
-To run Jarvis continuously as a background daemon:
+When using the automated installer (`./setup.sh`), the service file is automatically copied to `~/.config/systemd/user/agy-telegram.service` and the required entrypoint binaries are linked into `~/.local/bin/`.
+
+To enable and run Jarvis continuously as a background daemon:
+
+```bash
+systemctl --user enable --now agy-telegram.service
+```
+
+If configuring manually without `setup.sh`:
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -159,6 +182,23 @@ Inspect service logs with:
 ```bash
 journalctl --user -u agy-telegram.service -f
 ```
+
+#### Troubleshooting: `status=203/EXEC` (No such file or directory)
+
+If `agy-telegram.service` exits with `code=exited, status=203/EXEC`:
+```text
+agy-telegram.service: Failed to locate executable ~/.local/bin/jarvis-antigravity-agent: No such file or directory
+agy-telegram.service: Failed at step EXEC spawning ~/.local/bin/jarvis-antigravity-agent: No such file or directory
+```
+This indicates the executable link in `~/.local/bin/` is missing. Fix it by running:
+```bash
+./setup.sh
+# or
+make install
+```
+Ensure `~/.local/bin/jarvis-antigravity-agent` exists and has executable permissions (`chmod +x`).
+
+---
 
 ## Uninstallation & Cleanup
 

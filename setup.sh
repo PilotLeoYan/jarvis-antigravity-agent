@@ -60,15 +60,59 @@ for skill in skills/*; do
     fi
 done
 
+# 6. Binary Symlinks Linking to ~/.local/bin
+USER_BIN_DIR="$HOME/.local/bin"
+mkdir -p "$USER_BIN_DIR"
+VENV_BIN_DIR="$SCRIPT_DIR/.venv/bin"
+if [ ! -d "$VENV_BIN_DIR" ]; then
+    VENV_BIN_DIR="$SCRIPT_DIR/venv/bin"
+fi
+
+ENTRYPOINTS=(
+    "jarvis-antigravity-agent"
+    "jarvis-send-message"
+    "jarvis-spawn-agent"
+    "jarvis-mcp"
+    "jarvis-update"
+    "jarvis-uninstall"
+)
+
+echo "[+] Linking executable entrypoints into $USER_BIN_DIR..."
+for ep in "${ENTRYPOINTS[@]}"; do
+    if [ -f "$VENV_BIN_DIR/$ep" ]; then
+        ln -sf "$VENV_BIN_DIR/$ep" "$USER_BIN_DIR/$ep"
+        chmod +x "$USER_BIN_DIR/$ep" 2>/dev/null || true
+        echo "    Linked binary: $ep -> $USER_BIN_DIR/$ep"
+    fi
+done
+
+# 7. Systemd Service Deployment
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+if [ -f "$SCRIPT_DIR/systemd/agy-telegram.service" ]; then
+    echo "[+] Deploying systemd user service template to $SYSTEMD_USER_DIR/agy-telegram.service..."
+    cp "$SCRIPT_DIR/systemd/agy-telegram.service" "$SYSTEMD_USER_DIR/agy-telegram.service"
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload 2>/dev/null || true
+    fi
+fi
+
 echo ""
 echo "=========================================================="
 echo "   Setup Complete!"
+if [[ ":$PATH:" != *":$USER_BIN_DIR:"* ]]; then
+    echo ""
+    echo "   [*] Note: $USER_BIN_DIR is not currently in your PATH."
+    echo "       To run commands directly, add it to your shell profile:"
+    echo "       export PATH=\"\$HOME/.local/bin:\$PATH\""
+fi
+echo ""
 echo "   To start manually:"
 echo "     jarvis-antigravity-agent"
 echo ""
-echo "   To install as a systemd user daemon:"
-echo "     mkdir -p ~/.config/systemd/user"
-echo "     cp systemd/agy-telegram.service ~/.config/systemd/user/"
-echo "     systemctl --user daemon-reload"
+echo "   To enable and start as a systemd user daemon:"
 echo "     systemctl --user enable --now agy-telegram.service"
+echo ""
+echo "   To view service logs:"
+echo "     journalctl --user -u agy-telegram.service -f"
 echo "=========================================================="

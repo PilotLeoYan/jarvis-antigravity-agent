@@ -44,7 +44,12 @@ def find_config_path(explicit_path: str | Path | None = None) -> Path | None:
             if p.is_file():
                 return p
 
-    search_dirs = [Path.cwd(), Path(Constants.BASE_DIR)]
+    search_dirs = [
+        Path.cwd(),
+        Path(Constants.BASE_DIR),
+        Path.home() / ".config" / "jarvis-antigravity-agent",
+        Path.home() / ".config" / "jarvis",
+    ]
     candidate_names = ["config.yaml", "config.yml", "config.json"]
 
     for d in search_dirs:
@@ -140,12 +145,12 @@ class Settings(BaseSettings):
             telegram_data = {}
             d["telegram"] = telegram_data
 
-        # Map top-level legacy keys to telegram
-        if "bot_token" in d and "bot_token" not in telegram_data:
+        # Map top-level legacy keys to telegram (top-level overrides nested file values)
+        if "bot_token" in d:
             telegram_data["bot_token"] = d.pop("bot_token")
-        if "allowed_users" in d and "allowed_users" not in telegram_data:
+        if "allowed_users" in d:
             telegram_data["allowed_users"] = d.pop("allowed_users")
-        if "default_chat_id" in d and "default_chat_id" not in telegram_data:
+        if "default_chat_id" in d:
             telegram_data["default_chat_id"] = d.pop("default_chat_id")
 
         # Environment variable fallback for bot token and chat id
@@ -165,18 +170,18 @@ class Settings(BaseSettings):
             d["agy"] = agy_data
 
         # Map top-level legacy keys to agy
-        if "working_directory" in d and "working_dir" not in agy_data:
+        if "working_directory" in d:
             agy_data["working_dir"] = d.pop("working_directory")
-        elif "working_dir" in d and "working_dir" not in agy_data:
+        elif "working_dir" in d:
             agy_data["working_dir"] = d.pop("working_dir")
 
-        if "agy_path" in d and "agy_path" not in agy_data:
+        if "agy_path" in d:
             agy_data["agy_path"] = d.pop("agy_path")
-        if "model" in d and "model" not in agy_data:
+        if "model" in d:
             agy_data["model"] = d.pop("model")
-        if "default_flags" in d and "default_flags" not in agy_data:
+        if "default_flags" in d:
             agy_data["default_flags"] = d.pop("default_flags")
-        if "process_timeout" in d and "process_timeout" not in agy_data:
+        if "process_timeout" in d:
             agy_data["process_timeout"] = d.pop("process_timeout")
 
         # System sub-dict setup
@@ -185,7 +190,7 @@ class Settings(BaseSettings):
             system_data = {}
             d["system"] = system_data
 
-        if "state_path" in d and "state_path" not in system_data:
+        if "state_path" in d:
             system_data["state_path"] = d.pop("state_path")
 
         return d
@@ -205,25 +210,29 @@ class Settings(BaseSettings):
             dotenv_settings,
         ]
 
-        cfg_file = find_config_path()
-        if cfg_file and cfg_file.is_file():
-            ext = cfg_file.suffix.lower()
-            if ext in {".yaml", ".yml"}:
-                sources.append(
-                    YamlConfigSettingsSource(
-                        settings_cls,
-                        yaml_file=cfg_file,
-                        yaml_file_encoding="utf-8",
+        init_kwargs = getattr(init_settings, "init_kwargs", {}) or {}
+        load_config_file = not init_kwargs.get("_ignore_config_file", False)
+
+        if load_config_file:
+            cfg_file = find_config_path()
+            if cfg_file and cfg_file.is_file():
+                ext = cfg_file.suffix.lower()
+                if ext in {".yaml", ".yml"}:
+                    sources.append(
+                        YamlConfigSettingsSource(
+                            settings_cls,
+                            yaml_file=cfg_file,
+                            yaml_file_encoding="utf-8",
+                        )
                     )
-                )
-            elif ext == ".json":
-                sources.append(
-                    JsonConfigSettingsSource(
-                        settings_cls,
-                        json_file=cfg_file,
-                        json_file_encoding="utf-8",
+                elif ext == ".json":
+                    sources.append(
+                        JsonConfigSettingsSource(
+                            settings_cls,
+                            json_file=cfg_file,
+                            json_file_encoding="utf-8",
+                        )
                     )
-                )
 
         sources.append(file_secret_settings)
         return tuple(sources)
@@ -334,7 +343,9 @@ def build_runtime_config(
     Guarantees backward compatibility with dict-based consumers.
     """
     if config is not None:
-        settings = Settings(**config)
+        cfg = dict(config)
+        cfg["_ignore_config_file"] = True
+        settings = Settings(**cfg)
     else:
         settings = get_settings()
 

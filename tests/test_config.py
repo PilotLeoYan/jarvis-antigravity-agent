@@ -163,6 +163,24 @@ class TestPydanticSettings:
         found = find_config_path()
         assert found == f
 
+    def test_find_config_path_user_config_dir(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("JARVIS_CONFIG_PATH", raising=False)
+        monkeypatch.delenv("AGY_TELEGRAM_CONFIG", raising=False)
+        fake_home = tmp_path / "fake_home"
+        user_cfg_dir = fake_home / ".config" / "jarvis-antigravity-agent"
+        user_cfg_dir.mkdir(parents=True)
+        cfg_file = user_cfg_dir / "config.yaml"
+        cfg_file.touch()
+
+        monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+        monkeypatch.setattr("pathlib.Path.cwd", lambda: tmp_path / "other")
+        monkeypatch.setattr(
+            "jarvis_antigravity_agent.config.Constants.BASE_DIR",
+            str(tmp_path / "empty_base"),
+        )
+        found = find_config_path()
+        assert found == cfg_file
+
     def test_load_config_helper(self, tmp_path, monkeypatch):
         yaml_content = {"telegram": {"bot_token": "load_cfg_test"}}
         f = tmp_path / "config.yaml"
