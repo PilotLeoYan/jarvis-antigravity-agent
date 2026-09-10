@@ -29,9 +29,6 @@ telegram:
 
 # Google Antigravity CLI (agy) Execution Engine Configuration
 agy:
-  # Specific model version to use for agy (e.g. "Gemini 3.1 Pro (High)", "gemini-2.5-pro", etc.).
-  # Passed to agy via the --model flag.
-  model: "Gemini 3.1 Pro (High)"
 
   # Working directory where the agent runs commands and tool operations.
   # Defaults to the user's home directory.

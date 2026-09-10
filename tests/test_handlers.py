@@ -84,11 +84,53 @@ class TestBotHandlersEnglishCommands:
         with patch(
             "jarvis_antigravity_agent.handlers.get_agy_quotas",
             return_value={"groups": [{"displayName": "Gemini", "buckets": []}]},
-        ):
+        ) as mock_get_quotas:
             await handlers.quotas_command(mock_update, mock_context)
             mock_update.message.reply_text.assert_awaited_once()
             sent_text = mock_update.message.reply_text.call_args[0][0]
             assert "Google Antigravity Quotas & Limits" in sent_text
+            mock_get_quotas.assert_called_once_with(agy_path="agy")
+
+    @pytest.mark.anyio
+    async def test_telegram_bot_command_registration(self):
+        mock_app = MagicMock()
+        mock_app.bot.set_my_commands = AsyncMock()
+
+        from jarvis_antigravity_agent.main import main
+
+        # Verify command names in main.py
+        with patch(
+            "jarvis_antigravity_agent.main.load_config",
+            return_value={"telegram": {"bot_token": "valid:token"}},
+        ):
+            with patch(
+                "jarvis_antigravity_agent.main.Application.builder"
+            ) as mock_builder:
+                builder_token = mock_builder.return_value.token.return_value
+                builder_token.post_init.return_value.build.return_value = mock_app
+                post_init_fn = None
+
+                def capture_post_init(fn):
+                    nonlocal post_init_fn
+                    post_init_fn = fn
+                    return builder_token
+
+                builder_token.post_init.side_effect = capture_post_init
+
+                with patch.object(mock_app, "run_polling"):
+                    main()
+
+                assert post_init_fn is not None
+                await post_init_fn(mock_app)
+                mock_app.bot.set_my_commands.assert_awaited_once()
+                registered_cmds = mock_app.bot.set_my_commands.call_args[0][0]
+                cmd_names = [c.command for c in registered_cmds]
+                assert "start" in cmd_names
+                assert "help" in cmd_names
+                assert "quotas" in cmd_names
+                assert "skills" in cmd_names
+                assert "mcps" in cmd_names
+                assert "boost" in cmd_names
 
     @pytest.mark.anyio
     async def test_skills_command(self, runtime_cfg, state, mock_update, mock_context):

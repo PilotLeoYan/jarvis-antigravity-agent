@@ -11,6 +11,7 @@ GLOBAL_SKILL_DIRECTORIES = [
     ("Global User", os.path.expanduser("~/.agents/skills")),
     ("Global Config", os.path.expanduser("~/.gemini/config/skills")),
     ("Built-in", os.path.expanduser("~/.gemini/antigravity/builtin/skills")),
+    ("Built-in CLI", os.path.expanduser("~/.gemini/antigravity-cli/builtin/skills")),
 ]
 
 

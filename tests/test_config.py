@@ -72,7 +72,7 @@ class TestBuildRuntimeConfig:
 
     def test_default_model_in_runtime_config(self):
         cfg = build_runtime_config({})
-        assert cfg["model"] == "Gemini 3.1 Pro (High)"
+        assert cfg["model"] is None
 
 
 class TestPydanticSettings:
@@ -80,7 +80,7 @@ class TestPydanticSettings:
         settings = Settings()
         assert settings.telegram.request_timeout > 0
         assert settings.agy.process_timeout > 0
-        assert settings.agy.model == "Gemini 3.1 Pro (High)"
+        assert settings.agy.model is None
         assert settings.whisper.model_size == "base"
         assert settings.system.logger_name == "jarvis-bridge"
 

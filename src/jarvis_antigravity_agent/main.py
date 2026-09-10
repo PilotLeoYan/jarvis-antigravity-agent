@@ -105,17 +105,48 @@ def main() -> None:
         logger.error(Messages.MISSING_BOT_TOKEN)
         sys.exit(1)
 
-    # Ensure custom skills are synchronized to standard AGY user locations
+    # Sync custom skills and cognitive rules to standard AGY locations
     try:
-        from jarvis_antigravity_agent.uninstaller import copy_project_skills
+        from jarvis_antigravity_agent.uninstaller import (
+            copy_cognitive_rules,
+            copy_project_skills,
+        )
 
         copy_project_skills()
+        copy_cognitive_rules()
     except Exception as e:
-        logger.debug("Non-fatal: failed syncing project skills on startup: %s", e)
+        logger.debug(
+            "Non-fatal: failed syncing project skills or rules on startup: %s", e
+        )
 
     handlers = BotHandlers(runtime_cfg, state)
 
     async def post_init(application: Application) -> None:
+        try:
+            from telegram import BotCommand
+
+            bot_commands = [
+                BotCommand("start", "Welcome message and agent overview"),
+                BotCommand("help", "Show available commands and usage guide"),
+                BotCommand("new", "Reset session and conversation context"),
+                BotCommand("status", "Show system metrics and runtime status"),
+                BotCommand("quotas", "Inspect Google Antigravity quotas and limits"),
+                BotCommand("skills", "List active workspace and user skills"),
+                BotCommand("mcps", "Inspect configured MCP servers"),
+                BotCommand("cancel", "Cancel current active Antigravity task"),
+                BotCommand("boost", "Spawn autonomous background subagent"),
+                BotCommand("agents", "List background subagent tasks"),
+                BotCommand("killagent", "Terminate running subagent by ID"),
+                BotCommand("mcp", "Manage MCP servers (list/add/remove)"),
+                BotCommand("checkupdate", "Check for updates from GitHub"),
+                BotCommand("update", "Apply latest updates and restart"),
+                BotCommand("uninstall", "Display uninstallation instructions"),
+            ]
+            await application.bot.set_my_commands(bot_commands)
+            logger.info("Registered %d Telegram bot commands", len(bot_commands))
+        except Exception as e:
+            logger.warning("Failed to register Telegram bot commands: %s", e)
+
         asyncio.create_task(auto_update_checker(application, runtime_cfg))
 
     app = Application.builder().token(bot_token).post_init(post_init).build()

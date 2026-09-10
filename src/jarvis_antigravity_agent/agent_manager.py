@@ -113,7 +113,7 @@ class SubagentManager:
         target_work_dir = working_dir or runtime_cfg.get(
             "working_dir", Constants.DEFAULT_WORKING_DIR
         )
-        target_model = model or runtime_cfg.get("model") or Constants.AGY_DEFAULT_MODEL
+        target_model = model or runtime_cfg.get("model")
         agy_path = (
             runtime_cfg.get("agy_path")
             or shutil.which("agy")

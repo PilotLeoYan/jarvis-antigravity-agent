@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 from jarvis_antigravity_agent.quotas import (
     _discover_language_server,
     _extract_ports_for_pid,
+    _query_agy_cli_quota,
+    _resolve_agy_binary,
     format_quotas_markdown,
     get_agy_quotas,
 )
@@ -152,3 +154,167 @@ class TestQuotasModule:
         assert "custom\\_group\\_name" in md
         assert "desc\\_with\\_underscores" in md
         assert "bucket\\_limit\\_1" in md
+
+    def test_resolve_agy_binary_existing_file(self, tmp_path):
+        fake_agy = tmp_path / "fake_agy"
+        fake_agy.write_text("#!/bin/sh\n")
+        fake_agy.chmod(0o755)
+        resolved = _resolve_agy_binary(str(fake_agy))
+        assert resolved == str(fake_agy)
+
+    def test_query_agy_cli_quota_json_success(self):
+        cli_output = {
+            "status": "SUCCESS",
+            "command": {
+                "name": "usage",
+                "data": {
+                    "description": "Models share a weekly limit",
+                    "groups": [
+                        {
+                            "name": "Gemini Models",
+                            "description": "Flash and Pro",
+                            "buckets": [
+                                {
+                                    "id": "gemini-weekly",
+                                    "name": "Weekly Limit Remaining",
+                                    "remaining_fraction": 0.82,
+                                    "reset_time": "2026-09-16T18:03:49Z",
+                                    "description": "Refreshes in 6 days",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            },
+        }
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stdout = json.dumps(cli_output)
+
+        with (
+            patch("shutil.which", return_value="/bin/agy"),
+            patch("subprocess.run", return_value=mock_proc),
+        ):
+            data = _query_agy_cli_quota(agy_path="agy")
+            assert data is not None
+            assert "groups" in data
+            assert data["groups"][0]["name"] == "Gemini Models"
+            assert data["groups"][0]["buckets"][0]["remaining_fraction"] == 0.82
+
+    def test_query_agy_cli_quota_fallback_to_usage(self):
+        # First call fails (/quota), second succeeds (/usage)
+        fail_proc = MagicMock()
+        fail_proc.returncode = 1
+        fail_proc.stdout = ""
+
+        cli_output = {
+            "status": "SUCCESS",
+            "command": {
+                "name": "usage",
+                "data": {
+                    "groups": [
+                        {
+                            "name": "Claude and GPT models",
+                            "buckets": [
+                                {
+                                    "name": "Weekly Limit Remaining",
+                                    "remaining_fraction": 1.0,
+                                }
+                            ],
+                        }
+                    ]
+                },
+            },
+        }
+        success_proc = MagicMock()
+        success_proc.returncode = 0
+        success_proc.stdout = json.dumps(cli_output)
+
+        with (
+            patch("shutil.which", return_value="/bin/agy"),
+            patch("subprocess.run", side_effect=[fail_proc, success_proc]),
+        ):
+            data = _query_agy_cli_quota(agy_path="agy")
+            assert data is not None
+            assert data["groups"][0]["name"] == "Claude and GPT models"
+
+    def test_query_agy_cli_quota_raw_tab_separated(self):
+        raw_text = (
+            "Gemini Models\tWeekly Limit Remaining\t82%\t2026-09-16T18:03:49Z\n"
+            "Claude and GPT models\tWeekly Limit Remaining\t100%\t"
+            "2026-09-17T01:07:47Z\n"
+        )
+        json_resp = {
+            "status": "SUCCESS",
+            "response": raw_text,
+        }
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stdout = json.dumps(json_resp)
+
+        with (
+            patch("shutil.which", return_value="/bin/agy"),
+            patch("subprocess.run", return_value=mock_proc),
+        ):
+            data = _query_agy_cli_quota(agy_path="agy")
+            assert data is not None
+            assert "raw_response" in data
+            md = format_quotas_markdown(data)
+            assert "Gemini Models" in md
+            assert "82%" in md
+            assert "Claude and GPT models" in md
+            assert "100%" in md
+
+    def test_get_agy_quotas_prefers_cli(self):
+        with (
+            patch(
+                "jarvis_antigravity_agent.quotas._query_agy_cli_quota",
+                return_value={"groups": [{"name": "CLI Group"}]},
+            ),
+            patch(
+                "jarvis_antigravity_agent.quotas._query_language_server_quota",
+                return_value={"groups": [{"name": "RPC Group"}]},
+            ),
+        ):
+            quotas = get_agy_quotas()
+            assert quotas is not None
+            assert quotas["groups"][0]["name"] == "CLI Group"
+
+    def test_get_agy_quotas_falls_back_to_rpc(self):
+        with (
+            patch(
+                "jarvis_antigravity_agent.quotas._query_agy_cli_quota",
+                return_value=None,
+            ),
+            patch(
+                "jarvis_antigravity_agent.quotas._query_language_server_quota",
+                return_value={"groups": [{"name": "RPC Group"}]},
+            ),
+        ):
+            quotas = get_agy_quotas()
+            assert quotas is not None
+            assert quotas["groups"][0]["name"] == "RPC Group"
+
+    def test_format_quotas_markdown_with_reset_time_and_desc(self):
+        quota_data = {
+            "description": "Weekly token budget",
+            "groups": [
+                {
+                    "name": "Gemini Models",
+                    "description": "Models within group",
+                    "buckets": [
+                        {
+                            "name": "Weekly Limit Remaining",
+                            "remaining_fraction": 0.8157,
+                            "reset_time": "2026-09-16T18:03:49Z",
+                            "description": "Refreshes in 6 days",
+                        }
+                    ],
+                }
+            ],
+        }
+        md = format_quotas_markdown(quota_data)
+        assert "Weekly token budget" in md
+        assert "81.6%" in md
+        assert "2026-09-16 18:03:49 UTC" in md
+        assert "Refreshes in 6 days" in md

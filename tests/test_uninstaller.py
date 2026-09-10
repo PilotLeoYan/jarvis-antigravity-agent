@@ -6,6 +6,7 @@ import pytest
 from jarvis_antigravity_agent.handlers import BotHandlers
 from jarvis_antigravity_agent.messages import Messages
 from jarvis_antigravity_agent.uninstaller import (
+    copy_cognitive_rules,
     copy_project_skills,
     link_project_binaries,
     main_cli,
@@ -13,6 +14,7 @@ from jarvis_antigravity_agent.uninstaller import (
     purge_agy_data,
     purge_personal_data,
     stop_and_disable_service,
+    unlink_cognitive_rules,
     unlink_project_binaries,
     unlink_project_skills,
 )
@@ -447,3 +449,80 @@ class TestUninstaller:
                     dry_run=True,
                     project_dir=str(tmp_path),
                 )
+
+    def test_copy_cognitive_rules_deployment(self, tmp_path: Path):
+        repo_dir = tmp_path / "repo"
+        cog_dir = repo_dir / "cognitive"
+        cog_dir.mkdir(parents=True)
+        soul_md = cog_dir / "SOUL.md"
+        soul_md.write_text("Persona: Jarvis Autonomous Agent")
+        mem_ex = cog_dir / "MEMORY.example.md"
+        mem_ex.write_text("# Memory Template")
+
+        target_rules_1 = tmp_path / "rules1"
+        target_rules_2 = tmp_path / "rules2"
+
+        deployed = copy_cognitive_rules(
+            project_dir=repo_dir,
+            rules_target_dirs=[str(target_rules_1), str(target_rules_2)],
+        )
+
+        assert len(deployed) >= 4
+        assert (
+            target_rules_1 / "SOUL.md"
+        ).read_text() == "Persona: Jarvis Autonomous Agent"
+        assert (
+            target_rules_1 / "AGENTS.md"
+        ).read_text() == "Persona: Jarvis Autonomous Agent"
+        assert (
+            target_rules_2 / "SOUL.md"
+        ).read_text() == "Persona: Jarvis Autonomous Agent"
+        assert (
+            target_rules_2 / "AGENTS.md"
+        ).read_text() == "Persona: Jarvis Autonomous Agent"
+        # Verify MEMORY.md initialized from example
+        assert (cog_dir / "MEMORY.md").read_text() == "# Memory Template"
+
+    def test_unlink_cognitive_rules(self, tmp_path: Path):
+        repo_dir = tmp_path / "repo"
+        cog_dir = repo_dir / "cognitive"
+        cog_dir.mkdir(parents=True)
+        soul_md = cog_dir / "SOUL.md"
+        soul_md.write_text("Persona: Jarvis Autonomous Agent")
+
+        target_rules = tmp_path / "rules"
+        target_rules.mkdir(parents=True)
+        (target_rules / "SOUL.md").write_text("Persona: Jarvis Autonomous Agent")
+        (target_rules / "AGENTS.md").write_text("Persona: Jarvis Autonomous Agent")
+        (target_rules / "OTHER.md").write_text("Unrelated")
+
+        # Dry run does not delete
+        dry_unlinked = unlink_cognitive_rules(
+            project_dir=repo_dir,
+            rules_target_dirs=[str(target_rules)],
+            dry_run=True,
+        )
+        assert len(dry_unlinked) >= 2
+        assert (target_rules / "SOUL.md").exists()
+
+        # Actual delete
+        unlinked = unlink_cognitive_rules(
+            project_dir=repo_dir,
+            rules_target_dirs=[str(target_rules)],
+            dry_run=False,
+        )
+        assert len(unlinked) >= 2
+        assert not (target_rules / "SOUL.md").exists()
+        assert not (target_rules / "AGENTS.md").exists()
+        assert (target_rules / "OTHER.md").exists()
+
+    def test_perform_uninstall_includes_rules_unlinked(self, tmp_path: Path):
+        repo_dir = tmp_path / "repo"
+        results = perform_uninstall(
+            purge_personal=False,
+            purge_agy=False,
+            purge_service=False,
+            dry_run=True,
+            project_dir=repo_dir,
+        )
+        assert "rules_unlinked" in results

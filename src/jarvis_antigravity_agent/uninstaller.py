@@ -293,6 +293,125 @@ def copy_project_skills(
     return copied
 
 
+def copy_cognitive_rules(
+    project_dir: Path | str | None = None,
+    rules_target_dirs: list[str] | None = None,
+) -> list[str]:
+    """Deploy cognitive rules to standard AGY user rules locations."""
+    base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
+    soul_file = base_dir / "cognitive" / "SOUL.md"
+    if not soul_file.is_file():
+        return []
+
+    target_dirs = (
+        [os.path.expanduser(d) for d in rules_target_dirs]
+        if rules_target_dirs is not None
+        else [
+            os.path.expanduser("~/.gemini/config/rules"),
+            os.path.expanduser("~/.agents/rules"),
+        ]
+    )
+
+    deployed: list[str] = []
+    soul_content = soul_file.read_text(encoding="utf-8")
+
+    for r_dir in target_dirs:
+        target_path = Path(r_dir)
+        try:
+            target_path.mkdir(parents=True, exist_ok=True)
+            for fname in ("SOUL.md", "AGENTS.md"):
+                dest = target_path / fname
+                dest.write_text(soul_content, encoding="utf-8")
+                dest.chmod(0o644)
+                deployed.append(str(dest))
+        except Exception as e:
+            logger.debug("Failed deploying cognitive rules to %s: %s", target_path, e)
+
+    # Also ensure legacy config location has SOUL.md
+    legacy_dest = Path(os.path.expanduser("~/.gemini/config/SOUL.md"))
+    try:
+        legacy_dest.parent.mkdir(parents=True, exist_ok=True)
+        legacy_dest.write_text(soul_content, encoding="utf-8")
+        deployed.append(str(legacy_dest))
+    except Exception as e:
+        logger.debug("Failed deploying legacy SOUL.md to %s: %s", legacy_dest, e)
+
+    # Initialize MEMORY.md from example template if not already present
+    mem_example = base_dir / "cognitive" / "MEMORY.example.md"
+    mem_file = base_dir / "cognitive" / "MEMORY.md"
+    if mem_example.is_file() and not mem_file.is_file():
+        try:
+            shutil.copyfile(mem_example, mem_file)
+            deployed.append(str(mem_file))
+        except Exception as e:
+            logger.debug("Failed initializing MEMORY.md from example: %s", e)
+
+    return deployed
+
+
+def unlink_cognitive_rules(
+    project_dir: Path | str | None = None,
+    rules_target_dirs: list[str] | None = None,
+    dry_run: bool = False,
+) -> list[str]:
+    """Remove deployed cognitive rule files from AGY rules directories."""
+    base_dir = Path(project_dir or DEFAULT_REPO_DIR).resolve()
+    target_dirs = (
+        [os.path.expanduser(d) for d in rules_target_dirs]
+        if rules_target_dirs is not None
+        else [
+            os.path.expanduser("~/.gemini/config/rules"),
+            os.path.expanduser("~/.agents/rules"),
+        ]
+    )
+
+    unlinked: list[str] = []
+    soul_file = base_dir / "cognitive" / "SOUL.md"
+    expected_content = (
+        soul_file.read_text(encoding="utf-8") if soul_file.is_file() else None
+    )
+
+    for r_dir in target_dirs:
+        target_path = Path(r_dir)
+        if not target_path.is_dir():
+            continue
+        for fname in ("SOUL.md", "AGENTS.md"):
+            item = target_path / fname
+            if item.is_file():
+                try:
+                    if (
+                        expected_content is None
+                        or item.read_text(encoding="utf-8") == expected_content
+                    ):
+                        if dry_run:
+                            print(f"[dry-run] Would remove cognitive rule: {item}")
+                        else:
+                            item.unlink()
+                            print(f"[+] Removed cognitive rule: {item}")
+                        unlinked.append(str(item))
+                except Exception as e:
+                    logger.debug("Failed removing cognitive rule %s: %s", item, e)
+
+    # Clean legacy location
+    legacy_dest = Path(os.path.expanduser("~/.gemini/config/SOUL.md"))
+    if legacy_dest.is_file():
+        try:
+            if (
+                expected_content is None
+                or legacy_dest.read_text(encoding="utf-8") == expected_content
+            ):
+                if dry_run:
+                    print(f"[dry-run] Would remove legacy rule: {legacy_dest}")
+                else:
+                    legacy_dest.unlink()
+                    print(f"[+] Removed legacy rule: {legacy_dest}")
+                unlinked.append(str(legacy_dest))
+        except Exception as e:
+            logger.debug("Failed removing legacy rule %s: %s", legacy_dest, e)
+
+    return unlinked
+
+
 def purge_personal_data(
     base_dir: Path | str | None = None,
     extra_files: list[str] | None = None,
@@ -386,6 +505,7 @@ def perform_uninstall(
     results: dict[str, Any] = {
         "service_stopped": False,
         "skills_unlinked": [],
+        "rules_unlinked": [],
         "binaries_unlinked": [],
         "personal_files_removed": [],
         "agy_dirs_purged": [],
@@ -402,6 +522,10 @@ def perform_uninstall(
         results["service_stopped"] = stop_and_disable_service(dry_run=dry_run)
 
     results["skills_unlinked"] = unlink_project_skills(
+        project_dir=target_project_dir, dry_run=dry_run
+    )
+
+    results["rules_unlinked"] = unlink_cognitive_rules(
         project_dir=target_project_dir, dry_run=dry_run
     )
 

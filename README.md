@@ -115,7 +115,7 @@ Copy the example configuration file:
 cp config.example.yaml config.yaml
 ```
 
-Edit `config.yaml` to specify your Telegram Bot token, authorized user ID, and desired model:
+Edit `config.yaml` to specify your Telegram Bot token and authorized user ID:
 
 ```yaml
 telegram:
@@ -128,8 +128,6 @@ telegram:
   default_chat_id: 123456789
 
 agy:
-  # Specific model version passed via --model flag to agy
-  model: "Gemini 3.1 Pro (High)"
   # Working directory where agy commands execute
   working_dir: "/home/username"
   # Path to the agy binary
@@ -137,6 +135,8 @@ agy:
   # Flags passed to agy for autonomous execution
   default_flags:
     - "--dangerously-skip-permissions"
+  # Optional model override (omitted by default; agy manages model selection automatically)
+  # model: "gemini-2.5-pro"
 
 whisper:
   model_size: "base"
@@ -214,6 +214,7 @@ Both `./setup.sh` and `make install` automatically:
 3. Deploy `systemd/agy-telegram.service` to `~/.config/systemd/user/agy-telegram.service` with start burst rate limiting (`StartLimitIntervalSec=300`, `StartLimitBurst=5`) and `RestartPreventExitStatus=203` to prevent runaway restart loops if the executable is ever missing.
 4. Reload the user systemd daemon (`systemctl --user daemon-reload`).
 5. Copy custom skills (`telegram-formatting`, `agent-dispatch`, `mcp-management`, etc.) to standard Antigravity user skills directories (`~/.gemini/config/skills` and `~/.agents/skills`) ensuring automatic discovery and prompt injection across sessions.
+6. Deploy cognitive rules (`SOUL.md` / `AGENTS.md`) and persistent memory templates to standard Antigravity rules directories (`~/.gemini/config/rules/` and `~/.agents/rules/`), kept in continuous sync on startup so Jarvis reliably maintains its persona, guidelines, and memory.
 
 ---
 
