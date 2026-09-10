@@ -13,7 +13,7 @@ def runtime_cfg():
         "allowed_users": {"12345"},
         "working_dir": "/tmp",
         "agy_path": "agy",
-        "model": "Gemini 3.1 Pro (High)",
+        "model": None,
         "default_flags": ["--dangerously-skip-permissions"],
         "default_chat_id": 12345,
     }
@@ -128,6 +128,7 @@ class TestBotHandlersEnglishCommands:
                 assert "start" in cmd_names
                 assert "help" in cmd_names
                 assert "quotas" in cmd_names
+                assert "usage" in cmd_names
                 assert "skills" in cmd_names
                 assert "mcps" in cmd_names
                 assert "boost" in cmd_names

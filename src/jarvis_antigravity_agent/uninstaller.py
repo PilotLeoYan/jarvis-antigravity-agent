@@ -346,6 +346,47 @@ def copy_cognitive_rules(
         except Exception as e:
             logger.debug("Failed initializing MEMORY.md from example: %s", e)
 
+    # Symlink cognitive directory and memory to standard global/user locations
+    cog_source = base_dir / "cognitive"
+    if cog_source.is_dir():
+        link_targets: list[Path] = (
+            [
+                Path(os.path.expanduser("~/.gemini/cognitive")),
+                Path(os.path.expanduser("~/.agents/cognitive")),
+                Path(os.path.expanduser("~/cognitive")),
+            ]
+            if rules_target_dirs is None
+            else [
+                Path(target_dirs[0]).parent / "cognitive"
+                if target_dirs
+                else Path(base_dir / ".test_cognitive")
+            ]
+        )
+
+        for l_target in link_targets:
+            try:
+                l_target.parent.mkdir(parents=True, exist_ok=True)
+                if l_target.is_symlink():
+                    l_target.unlink()
+                if not l_target.exists():
+                    l_target.symlink_to(cog_source)
+                    deployed.append(str(l_target))
+            except Exception as e:
+                logger.debug("Failed creating cognitive symlink %s: %s", l_target, e)
+
+        if rules_target_dirs is None and mem_file.is_file():
+            home_mem = Path(os.path.expanduser("~/MEMORY.md"))
+            try:
+                if home_mem.is_symlink():
+                    home_mem.unlink()
+                if not home_mem.exists():
+                    home_mem.symlink_to(mem_file)
+                    deployed.append(str(home_mem))
+            except Exception as e:
+                logger.debug(
+                    "Failed creating home MEMORY.md symlink %s: %s", home_mem, e
+                )
+
     return deployed
 
 
@@ -408,6 +449,52 @@ def unlink_cognitive_rules(
                 unlinked.append(str(legacy_dest))
         except Exception as e:
             logger.debug("Failed removing legacy rule %s: %s", legacy_dest, e)
+
+    # Clean cognitive directory symlinks
+    cog_source = base_dir / "cognitive"
+    link_targets: list[Path] = (
+        [
+            Path(os.path.expanduser("~/.gemini/cognitive")),
+            Path(os.path.expanduser("~/.agents/cognitive")),
+            Path(os.path.expanduser("~/cognitive")),
+        ]
+        if rules_target_dirs is None
+        else [
+            Path(target_dirs[0]).parent / "cognitive"
+            if target_dirs
+            else Path(base_dir / ".test_cognitive")
+        ]
+    )
+
+    for l_target in link_targets:
+        if l_target.is_symlink():
+            try:
+                resolved = l_target.resolve()
+                if resolved == cog_source.resolve():
+                    if dry_run:
+                        print(f"[dry-run] Would remove cognitive symlink: {l_target}")
+                    else:
+                        l_target.unlink()
+                        print(f"[+] Removed cognitive symlink: {l_target}")
+                    unlinked.append(str(l_target))
+            except Exception as e:
+                logger.debug("Failed unlinking cognitive link %s: %s", l_target, e)
+
+    if rules_target_dirs is None:
+        home_mem = Path(os.path.expanduser("~/MEMORY.md"))
+        if home_mem.is_symlink():
+            try:
+                resolved_mem = home_mem.resolve()
+                mem_source = (base_dir / "cognitive" / "MEMORY.md").resolve()
+                if resolved_mem == mem_source:
+                    if dry_run:
+                        print(f"[dry-run] Would remove memory symlink: {home_mem}")
+                    else:
+                        home_mem.unlink()
+                        print(f"[+] Removed memory symlink: {home_mem}")
+                    unlinked.append(str(home_mem))
+            except Exception as e:
+                logger.debug("Failed unlinking memory link %s: %s", home_mem, e)
 
     return unlinked
 

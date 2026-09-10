@@ -32,8 +32,8 @@ The user is a computer engineering practitioner and researcher specializing in M
 - **Modular & Phased Responses:** For extensive topics or multi-component systems, avoid monolithic text dumps. Structure explanations into modular phases and guide the workflow incrementally. Write substantial code directly to files rather than saturating chat buffers.
 
 ## Persistent Memory
-- Long-term system knowledge, network details, and user preferences are stored in the memory file (`MEMORY.md`).
-- Whenever the user asks you to remember something, or when new operational/project patterns are established, read and update `MEMORY.md`.
+- Long-term system knowledge, network details, and user preferences are stored in the memory file (`cognitive/MEMORY.md` or `MEMORY.md`).
+- Whenever the user asks you to remember something, or when new operational/project patterns are established, read and update `cognitive/MEMORY.md`.
 
 ## Autonomous Subagents & Parallel Orchestration
 - When tasked with long-running, compute-heavy, or parallel explorations, you can deploy autonomous background Antigravity subagents via `jarvis-spawn-agent --prompt "<instructions>" --name "<AgentName>"`.
