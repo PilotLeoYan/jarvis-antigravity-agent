@@ -178,36 +178,39 @@ def _query_agy_cli_quota(
 
     # agy CLI supports both /quota and /usage
     for flag in ("/quota", "/usage"):
-        cmd = [agy_bin, "--output-format", "json", "-p", flag]
-        try:
-            res = subprocess.run(  # noqa: S603
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                env=env,
-                check=False,
-            )
-            if res.returncode == 0 and res.stdout.strip():
-                try:
-                    data = json.loads(res.stdout)
-                    cmd_data = data.get("command", {}).get("data")
-                    if isinstance(cmd_data, dict) and "groups" in cmd_data:
-                        return cmd_data
-                    resp_str = data.get("response", "").strip()
-                    if resp_str:
-                        return {
-                            "raw_response": resp_str,
-                            "description": data.get("command", {})
-                            .get("data", {})
-                            .get("description", ""),
-                        }
-                except json.JSONDecodeError:
-                    if res.stdout.strip():
-                        return {"raw_response": res.stdout.strip()}
-        except (subprocess.SubprocessError, OSError) as e:
-            logger.debug("Failed querying agy quota via %s: %s", cmd, e)
-            continue
+        for cmd in (
+            [agy_bin, "--output-format", "json", "-p", flag],
+            [agy_bin, "-p", flag],
+        ):
+            try:
+                res = subprocess.run(  # noqa: S603
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    env=env,
+                    check=False,
+                )
+                if res.returncode == 0 and res.stdout.strip():
+                    try:
+                        data = json.loads(res.stdout)
+                        cmd_data = data.get("command", {}).get("data")
+                        if isinstance(cmd_data, dict) and "groups" in cmd_data:
+                            return cmd_data
+                        resp_str = data.get("response", "").strip()
+                        if resp_str:
+                            return {
+                                "raw_response": resp_str,
+                                "description": data.get("command", {})
+                                .get("data", {})
+                                .get("description", ""),
+                            }
+                    except json.JSONDecodeError:
+                        if res.stdout.strip():
+                            return {"raw_response": res.stdout.strip()}
+            except (subprocess.SubprocessError, OSError) as e:
+                logger.debug("Failed querying agy quota via %s: %s", cmd, e)
+                continue
     return None
 
 
@@ -275,9 +278,10 @@ def format_quotas_markdown(quota_data: dict[str, Any] | None) -> str:
                 model_grp = parts[0].strip().replace("_", "\\_").replace("*", "\\*")
                 limit_type = parts[1].strip().replace("_", "\\_").replace("*", "\\*")
                 pct = parts[2].strip()
-                reset_info = (
-                    f" _(resets: {parts[3].strip()})_" if len(parts) > 3 else ""
-                )
+                reset_info = ""
+                if len(parts) > 3:
+                    clean_time = parts[3].strip().replace("T", " ").replace("Z", " UTC")
+                    reset_info = f" _(resets: {clean_time})_"
                 raw_lines.append(f"• *{model_grp}* — {limit_type}: `{pct}`{reset_info}")
             else:
                 raw_lines.append(f"• `{line}`")

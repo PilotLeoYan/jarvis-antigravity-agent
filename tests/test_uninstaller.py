@@ -526,3 +526,31 @@ class TestUninstaller:
             project_dir=repo_dir,
         )
         assert "rules_unlinked" in results
+
+    def test_copy_and_unlink_cognitive_symlinks(self, tmp_path: Path):
+        repo_dir = tmp_path / "repo"
+        cog_dir = repo_dir / "cognitive"
+        cog_dir.mkdir(parents=True)
+        soul_md = cog_dir / "SOUL.md"
+        soul_md.write_text("Persona: Jarvis Autonomous Agent")
+        mem_ex = cog_dir / "MEMORY.example.md"
+        mem_ex.write_text("# Memory Template")
+
+        target_rules = tmp_path / "custom_rules"
+        deployed = copy_cognitive_rules(
+            project_dir=repo_dir,
+            rules_target_dirs=[str(target_rules)],
+        )
+        assert len(deployed) >= 3
+        test_cog_link = target_rules.parent / "cognitive"
+        assert test_cog_link.is_symlink()
+        soul_text = (test_cog_link / "SOUL.md").read_text()
+        assert soul_text == "Persona: Jarvis Autonomous Agent"
+
+        unlinked = unlink_cognitive_rules(
+            project_dir=repo_dir,
+            rules_target_dirs=[str(target_rules)],
+            dry_run=False,
+        )
+        assert str(test_cog_link) in unlinked
+        assert not test_cog_link.exists()

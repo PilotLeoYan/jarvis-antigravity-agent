@@ -22,9 +22,9 @@ agy --dangerously-skip-permissions -c -p "Now summarize the changes in bullet po
 ```
 
 ### Specific Model Override (`--model`)
-Specifies the exact Gemini model variant for execution. Must precede `-p`:
+Google Antigravity manages model selection autonomously by default. When a specific model override is needed, use `--model` (must precede `-p`):
 ```bash
-agy --dangerously-skip-permissions --model "Gemini 3.1 Pro (High)" -p "Perform rigorous architectural analysis"
+agy --dangerously-skip-permissions --model "<model_name>" -p "Perform rigorous architectural analysis"
 ```
 
 ### Structured Streaming Mode (`--output-format stream-json`)
@@ -35,7 +35,7 @@ agy --dangerously-skip-permissions --output-format stream-json -p "Run tests"
 
 ## Fundamental Flags & Options
 - `--dangerously-skip-permissions`: Autonomous execution without requiring interactive terminal prompts.
-- `--model <name>`: Explicitly select model version (e.g., `Gemini 3.1 Pro (High)`, `gemini-2.5-pro`).
+- `--model <name>`: Optional explicit model override (by default, `agy` manages model selection autonomously).
 - `--output-format stream-json`: Structured streaming JSON events for programmatic daemons and bridges.
 - `-c` / `--continue`: Continue conversation context from the previous session.
 - `-p` / `--print`: Non-interactive console print mode.

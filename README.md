@@ -159,7 +159,8 @@ Key parameters can also be configured via environment variables:
 ```bash
 export TELEGRAM_BOT_TOKEN="your_token_here"
 export TELEGRAM_CHAT_ID="your_chat_id_here"
-export AGY_MODEL="Gemini 3.1 Pro (High)"
+# Optional model override (omitted by default; agy manages model selection autonomously)
+# export AGY_MODEL="gemini-2.5-pro"
 export MCP_CONFIG_PATH="$HOME/.gemini/config/mcp_config.json"
 ```
 

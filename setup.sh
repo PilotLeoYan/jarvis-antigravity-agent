@@ -60,6 +60,19 @@ if [ ! -f "$SCRIPT_DIR/cognitive/MEMORY.md" ] && [ -f "$SCRIPT_DIR/cognitive/MEM
     cp "$SCRIPT_DIR/cognitive/MEMORY.example.md" "$SCRIPT_DIR/cognitive/MEMORY.md"
 fi
 
+# Symlink cognitive directory to standard locations for seamless agent access
+echo "[+] Linking cognitive memory and architecture for seamless agent access..."
+ln -sfn "$SCRIPT_DIR/cognitive" "$HOME/.gemini/cognitive"
+ln -sfn "$SCRIPT_DIR/cognitive" "$HOME/.agents/cognitive"
+if [ ! -e "$HOME/cognitive" ] || [ -L "$HOME/cognitive" ]; then
+    ln -sfn "$SCRIPT_DIR/cognitive" "$HOME/cognitive"
+    echo "    Linked cognitive directory -> $HOME/cognitive"
+fi
+if [ -f "$SCRIPT_DIR/cognitive/MEMORY.md" ] && ([ ! -e "$HOME/MEMORY.md" ] || [ -L "$HOME/MEMORY.md" ]); then
+    ln -sfn "$SCRIPT_DIR/cognitive/MEMORY.md" "$HOME/MEMORY.md"
+    echo "    Linked memory file -> $HOME/MEMORY.md"
+fi
+
 # 5. Skills Deployment (Standard AGY User Skills Locations)
 SKILL_TARGET_DIRS=(
     "$HOME/.gemini/config/skills"

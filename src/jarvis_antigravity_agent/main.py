@@ -131,6 +131,7 @@ def main() -> None:
                 BotCommand("new", "Reset session and conversation context"),
                 BotCommand("status", "Show system metrics and runtime status"),
                 BotCommand("quotas", "Inspect Google Antigravity quotas and limits"),
+                BotCommand("usage", "Inspect token quotas and usage limits"),
                 BotCommand("skills", "List active workspace and user skills"),
                 BotCommand("mcps", "Inspect configured MCP servers"),
                 BotCommand("cancel", "Cancel current active Antigravity task"),
@@ -147,15 +148,35 @@ def main() -> None:
         except Exception as e:
             logger.warning("Failed to register Telegram bot commands: %s", e)
 
-        asyncio.create_task(auto_update_checker(application, runtime_cfg))
+        update_task = asyncio.create_task(auto_update_checker(application, runtime_cfg))
+        application.bot_data["update_task"] = update_task
 
-    app = Application.builder().token(bot_token).post_init(post_init).build()
+    async def post_shutdown(application: Application) -> None:
+        task = application.bot_data.get("update_task")
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                logger.debug("Background update task stop notice: %s", e)
+
+    app = (
+        Application.builder()
+        .token(bot_token)
+        .post_init(post_init)
+        .post_shutdown(post_shutdown)
+        .build()
+    )
 
     app.add_handler(CommandHandler(["start"], handlers.start_command))
     app.add_handler(CommandHandler(["help"], handlers.help_command))
     app.add_handler(CommandHandler(["new"], handlers.new_command))
     app.add_handler(CommandHandler(["status"], handlers.status_command))
-    app.add_handler(CommandHandler(["quotas", "quota"], handlers.quotas_command))
+    app.add_handler(
+        CommandHandler(["quotas", "quota", "usage"], handlers.quotas_command)
+    )
     app.add_handler(CommandHandler(["skills", "globalskills"], handlers.skills_command))
     app.add_handler(CommandHandler(["mcps", "globalmcps"], handlers.mcps_command))
     app.add_handler(CommandHandler(["cancel"], handlers.cancel_command))

@@ -22,8 +22,7 @@ jarvis-spawn-agent \
   --prompt "Perform thorough security audit of src/ and write report to audit.md" \
   --name "SecurityAuditor" \
   --chat-id 123456789 \
-  --working-dir "/path/to/project" \
-  --model "Gemini 3.1 Pro (High)"
+  --working-dir "/path/to/project"
 ```
 
 ### Options:
@@ -31,7 +30,7 @@ jarvis-spawn-agent \
 - `--name`: Human-readable identifier for tracking.
 - `--chat-id`: Telegram chat ID to receive progress and completion notifications upon finish.
 - `--working-dir`: Directory in which the subagent operates (defaults to current working dir).
-- `--model`: Model variant to override default settings.
+- `--model`: Optional model variant to override autonomous default model selection.
 
 ## Direct Telegram Commands
 Users can also spawn subagents directly from the Telegram conversation:

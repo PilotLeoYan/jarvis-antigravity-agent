@@ -29,7 +29,7 @@ While conversational context is maintained via `agy -c` within an active session
 ## 2. User Directives & Preferences
 - Code conventions: Strict typing with Mypy, Ruff formatting (88 chars), pytest for tests.
 - Communication style: High density, direct, no conversational filler.
-- Default AGY model: Gemini 3.1 Pro (High).
+- AGY model management: Autonomous selection by agy (override via --model when needed).
 
 ## 3. Active Projects & Repositories
 - `jarvis-antigravity-agent`: Autonomous Telegram bridge for Antigravity CLI.

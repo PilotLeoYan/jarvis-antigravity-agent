@@ -264,6 +264,27 @@ class TestQuotasModule:
             assert "82%" in md
             assert "Claude and GPT models" in md
             assert "100%" in md
+            assert "2026-09-16 18:03:49 UTC" in md
+
+    def test_query_agy_cli_quota_fallback_to_plain_command(self):
+        fail_json_proc = MagicMock()
+        fail_json_proc.returncode = 1
+        fail_json_proc.stdout = "Unknown flag: --output-format"
+
+        success_plain_proc = MagicMock()
+        success_plain_proc.returncode = 0
+        success_plain_proc.stdout = (
+            "Gemini Models\tWeekly Limit Remaining\t78%\t2026-09-16T18:03:49Z\n"
+        )
+
+        with (
+            patch("shutil.which", return_value="/bin/agy"),
+            patch("subprocess.run", side_effect=[fail_json_proc, success_plain_proc]),
+        ):
+            data = _query_agy_cli_quota(agy_path="agy")
+            assert data is not None
+            assert "raw_response" in data
+            assert "Gemini Models" in data["raw_response"]
 
     def test_get_agy_quotas_prefers_cli(self):
         with (
