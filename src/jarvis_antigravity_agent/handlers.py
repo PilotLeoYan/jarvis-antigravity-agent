@@ -219,7 +219,8 @@ class BotHandlers:
         if not self._is_authorized(update.effective_user.id):
             return
 
-        quota_data = await asyncio.to_thread(get_agy_quotas)
+        agy_path = self._cfg.get("agy_path", "agy")
+        quota_data = await asyncio.to_thread(get_agy_quotas, agy_path=agy_path)
         msg = format_quotas_markdown(quota_data)
         await send_reply_chunks(update, msg)
 

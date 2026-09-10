@@ -70,8 +70,8 @@ When `agy` processes a request, the bridge listens to the `stream-json` event st
 
 ---
 
-## 3. Cognitive Files & System Prompts
+## 3. Cognitive Files, System Rules & Skills Discovery
 
-- **`SOUL.md`:** The core persona definition and operational guardrails injected into the agent's context.
-- **`MEMORY.md`:** Long-term external memory tracking system topology, active projects, user preferences, and cron schedules.
-- **`skills/`:** Modular capabilities adhering to the Open Agent Skills specification, loaded dynamically into the agent's reasoning framework.
+- **`SOUL.md` / `AGENTS.md`:** The core persona definition and operational guardrails. Google Antigravity discovers rules placed in standard customization roots (`~/.gemini/config/rules/` and `~/.agents/rules/`) or directory-level `AGENTS.md`/`GEMINI.md`. Jarvis automatically deploys and synchronizes these rules on startup.
+- **`MEMORY.md`:** Long-term external memory tracking system topology, active projects, user preferences, and cron schedules (`cognitive/MEMORY.md`).
+- **`skills/`:** Modular capabilities adhering to the Open Agent Skills specification, synchronized into `~/.gemini/config/skills` and `~/.agents/skills` for automatic on-demand discovery across all execution sessions.

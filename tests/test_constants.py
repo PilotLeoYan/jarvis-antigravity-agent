@@ -46,5 +46,4 @@ class TestConstants:
 
     def test_agy_model_constants(self):
         assert Constants.AGY_MODEL_FLAG == "--model"
-        assert isinstance(Constants.AGY_DEFAULT_MODEL, str)
-        assert len(Constants.AGY_DEFAULT_MODEL) > 0
+        assert Constants.AGY_DEFAULT_MODEL is None

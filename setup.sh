@@ -38,11 +38,26 @@ else
 fi
 
 # 4. Cognitive Setup
-AGENT_CONFIG_DIR="$HOME/.gemini/config"
-mkdir -p "$AGENT_CONFIG_DIR"
-if [ ! -f "$AGENT_CONFIG_DIR/SOUL.md" ]; then
-    echo "[+] Deploying cognitive rules to $AGENT_CONFIG_DIR/SOUL.md..."
-    cp cognitive/SOUL.md "$AGENT_CONFIG_DIR/SOUL.md"
+echo "[+] Deploying cognitive rules to standard AGY rules locations..."
+COGNITIVE_TARGET_DIRS=(
+    "$HOME/.gemini/config/rules"
+    "$HOME/.agents/rules"
+)
+for r_dir in "${COGNITIVE_TARGET_DIRS[@]}"; do
+    mkdir -p "$r_dir"
+    cp "$SCRIPT_DIR/cognitive/SOUL.md" "$r_dir/SOUL.md"
+    cp "$SCRIPT_DIR/cognitive/SOUL.md" "$r_dir/AGENTS.md"
+    echo "    Deployed cognitive rules -> $r_dir"
+done
+
+# Ensure fallback copy at $HOME/.gemini/config/SOUL.md
+mkdir -p "$HOME/.gemini/config"
+cp "$SCRIPT_DIR/cognitive/SOUL.md" "$HOME/.gemini/config/SOUL.md"
+
+# Initialize persistent memory template if not present
+if [ ! -f "$SCRIPT_DIR/cognitive/MEMORY.md" ] && [ -f "$SCRIPT_DIR/cognitive/MEMORY.example.md" ]; then
+    echo "[+] Initializing cognitive/MEMORY.md from template..."
+    cp "$SCRIPT_DIR/cognitive/MEMORY.example.md" "$SCRIPT_DIR/cognitive/MEMORY.md"
 fi
 
 # 5. Skills Deployment (Standard AGY User Skills Locations)

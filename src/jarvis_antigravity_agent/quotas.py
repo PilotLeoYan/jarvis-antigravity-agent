@@ -139,7 +139,79 @@ def _discover_language_server() -> tuple[str | None, str | None, list[int]]:
     return None, None, []
 
 
-def get_agy_quotas() -> dict[str, Any] | None:
+def _resolve_agy_binary(agy_path: str = "agy") -> str:
+    """Locate the agy binary from config, PATH, or standard user directories."""
+    if (
+        os.path.isabs(agy_path)
+        and os.path.isfile(agy_path)
+        and os.access(agy_path, os.X_OK)
+    ):
+        return agy_path
+    resolved = shutil.which(agy_path)
+    if resolved:
+        return resolved
+    for candidate in (
+        os.path.expanduser("~/.local/bin/agy"),
+        "/usr/local/bin/agy",
+        "/usr/bin/agy",
+    ):
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return agy_path
+
+
+def _query_agy_cli_quota(
+    agy_path: str = "agy",
+    timeout: float = 15.0,
+) -> dict[str, Any] | None:
+    """Execute agy CLI non-interactively to query model quota and usage."""
+    agy_bin = _resolve_agy_binary(agy_path)
+    if not (
+        shutil.which(agy_bin) or (os.path.isabs(agy_bin) and os.path.isfile(agy_bin))
+    ):
+        return None
+
+    env = os.environ.copy()
+    user_local_bin = os.path.expanduser("~/.local/bin")
+    if user_local_bin not in env.get("PATH", ""):
+        env["PATH"] = f"{user_local_bin}:{env.get('PATH', '')}"
+
+    # agy CLI supports both /quota and /usage
+    for flag in ("/quota", "/usage"):
+        cmd = [agy_bin, "--output-format", "json", "-p", flag]
+        try:
+            res = subprocess.run(  # noqa: S603
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+                check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                try:
+                    data = json.loads(res.stdout)
+                    cmd_data = data.get("command", {}).get("data")
+                    if isinstance(cmd_data, dict) and "groups" in cmd_data:
+                        return cmd_data
+                    resp_str = data.get("response", "").strip()
+                    if resp_str:
+                        return {
+                            "raw_response": resp_str,
+                            "description": data.get("command", {})
+                            .get("data", {})
+                            .get("description", ""),
+                        }
+                except json.JSONDecodeError:
+                    if res.stdout.strip():
+                        return {"raw_response": res.stdout.strip()}
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.debug("Failed querying agy quota via %s: %s", cmd, e)
+            continue
+    return None
+
+
+def _query_language_server_quota() -> dict[str, Any] | None:
     """Fetch current user quota summary from the local Antigravity Language Server."""
     _, csrf_token, ports = _discover_language_server()
     if not csrf_token or not ports:
@@ -169,16 +241,49 @@ def get_agy_quotas() -> dict[str, Any] | None:
     return None
 
 
+def get_agy_quotas(
+    agy_path: str = "agy",
+    timeout: float = 15.0,
+) -> dict[str, Any] | None:
+    """Fetch current user quota summary from agy CLI or local Language Server."""
+    cli_quotas = _query_agy_cli_quota(agy_path=agy_path, timeout=timeout)
+    if cli_quotas:
+        return cli_quotas
+    return _query_language_server_quota()
+
+
 def format_quotas_markdown(quota_data: dict[str, Any] | None) -> str:
     """Format quota data into clean Telegram Markdown."""
     if not quota_data or not isinstance(quota_data, dict):
         return (
             "⚠️ *Antigravity Quotas Unavailable*\n\n"
-            "Could not connect to the local Antigravity language server.\n"
-            "Ensure Google Antigravity (`agy`) is running on the host."
+            "Could not query quotas via Google Antigravity CLI (`agy -p /quota`) "
+            "or local Language Server.\n"
+            "Ensure Google Antigravity (`agy`) is installed and authenticated."
         )
 
     groups = quota_data.get("groups", [])
+    if not groups and "raw_response" in quota_data:
+        raw = quota_data["raw_response"]
+        raw_lines = ["📊 *Google Antigravity Quotas & Limits*\n"]
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("\t")
+            if len(parts) >= 3:
+                model_grp = parts[0].strip().replace("_", "\\_").replace("*", "\\*")
+                limit_type = parts[1].strip().replace("_", "\\_").replace("*", "\\*")
+                pct = parts[2].strip()
+                reset_info = (
+                    f" _(resets: {parts[3].strip()})_" if len(parts) > 3 else ""
+                )
+                raw_lines.append(f"• *{model_grp}* — {limit_type}: `{pct}`{reset_info}")
+            else:
+                raw_lines.append(f"• `{line}`")
+        raw_lines.append("\nℹ️ _Quotas refresh automatically._")
+        return "\n".join(raw_lines)
+
     if not groups:
         return (
             "ℹ️ *Antigravity Quotas*\n\n"
@@ -187,8 +292,13 @@ def format_quotas_markdown(quota_data: dict[str, Any] | None) -> str:
 
     lines: list[str] = ["📊 *Google Antigravity Quotas & Limits*\n"]
 
+    desc = quota_data.get("description", "")
+    if desc:
+        clean_desc = desc.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[")
+        lines.append(f"_{clean_desc}_\n")
+
     for group in groups:
-        g_name = group.get("displayName", "Model Group")
+        g_name = group.get("displayName") or group.get("name", "Model Group")
         g_desc = group.get("description", "")
         escaped_g_name = g_name.replace("_", "\\_").replace("*", "\\*")
         clean_g_desc = (
@@ -200,20 +310,33 @@ def format_quotas_markdown(quota_data: dict[str, Any] | None) -> str:
 
         buckets = group.get("buckets", [])
         for b in buckets:
-            b_name = b.get("displayName", b.get("bucketId", "Limit"))
-            frac = b.get("remainingFraction")
+            b_name = (
+                b.get("displayName")
+                or b.get("name")
+                or b.get("bucketId")
+                or b.get("id", "Limit")
+            )
+            frac = (
+                b.get("remaining_fraction")
+                if "remaining_fraction" in b
+                else b.get("remainingFraction")
+            )
             pct_str = f"{frac * 100:.1f}%" if frac is not None else "N/A"
             b_desc = b.get("description", "")
+            reset_time = b.get("reset_time") or b.get("resetTime")
+
             escaped_b_name = b_name.replace("_", "\\_").replace("*", "\\*")
             clean_b_desc = (
                 b_desc.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[")
             )
 
-            # Build readable status bullet
+            bullet = f"• *{escaped_b_name}*: `{pct_str}`"
+            if reset_time:
+                clean_time = reset_time.replace("T", " ").replace("Z", " UTC")
+                bullet += f" _(resets: {clean_time})_"
             if clean_b_desc:
-                lines.append(f"• *{escaped_b_name}*: `{pct_str}` — _{clean_b_desc}_")
-            else:
-                lines.append(f"• *{escaped_b_name}*: `{pct_str}`")
+                bullet += f"\n  _{clean_b_desc}_"
+            lines.append(bullet)
 
         lines.append("")
 

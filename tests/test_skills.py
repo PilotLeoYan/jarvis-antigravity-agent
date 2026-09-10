@@ -105,3 +105,9 @@ class TestSkillsInspector:
         md = format_skills_markdown(skills_mock)
         assert "generative\\_ui" in md
         assert "HTML\\_widgets" in md
+
+    def test_global_skill_directories_contains_cli_builtin(self):
+        from jarvis_antigravity_agent.skills_inspector import GLOBAL_SKILL_DIRECTORIES
+
+        labels = [lbl for lbl, _ in GLOBAL_SKILL_DIRECTORIES]
+        assert "Built-in CLI" in labels
