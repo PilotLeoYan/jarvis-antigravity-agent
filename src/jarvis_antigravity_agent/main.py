@@ -4,7 +4,13 @@ import sys
 from typing import Any
 
 from telegram import constants
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 
 from jarvis_antigravity_agent.config import (
     build_runtime_config,
@@ -130,6 +136,8 @@ def main() -> None:
                 BotCommand("help", "Show available commands and usage guide"),
                 BotCommand("new", "Reset session and conversation context"),
                 BotCommand("status", "Show system metrics and runtime status"),
+                BotCommand("model", "Select Gemini model & thinking/effort level"),
+                BotCommand("effort", "Set reasoning effort (low, medium, high, auto)"),
                 BotCommand("quotas", "Inspect Google Antigravity quotas and limits"),
                 BotCommand("usage", "Inspect token quotas and usage limits"),
                 BotCommand("skills", "List active workspace and user skills"),
@@ -175,6 +183,10 @@ def main() -> None:
     app.add_handler(CommandHandler(["new"], handlers.new_command))
     app.add_handler(CommandHandler(["status"], handlers.status_command))
     app.add_handler(
+        CommandHandler(["model", "models", "thinking"], handlers.model_command)
+    )
+    app.add_handler(CommandHandler(["effort"], handlers.effort_command))
+    app.add_handler(
         CommandHandler(["quotas", "quota", "usage"], handlers.quotas_command)
     )
     app.add_handler(CommandHandler(["skills", "globalskills"], handlers.skills_command))
@@ -189,6 +201,10 @@ def main() -> None:
     app.add_handler(CommandHandler(["update"], handlers.update_command))
     app.add_handler(CommandHandler(["checkupdate"], handlers.checkupdate_command))
     app.add_handler(CommandHandler(["uninstall"], handlers.uninstall_command))
+
+    app.add_handler(
+        CallbackQueryHandler(handlers.model_callback_handler, pattern=r"^model:")
+    )
 
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.handle_message)

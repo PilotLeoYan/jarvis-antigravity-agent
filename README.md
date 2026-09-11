@@ -135,8 +135,10 @@ agy:
   # Flags passed to agy for autonomous execution
   default_flags:
     - "--dangerously-skip-permissions"
-  # Optional model override (omitted by default; agy manages model selection automatically)
-  # model: "gemini-2.5-pro"
+  # Optional model override (can also be selected interactively in Telegram via /model)
+  # model: "gemini-3.8-flash-high"
+  # Optional reasoning effort override: "low", "medium", "high" (or /effort in Telegram)
+  # effort: "high"
 
 whisper:
   model_size: "base"
@@ -159,8 +161,9 @@ Key parameters can also be configured via environment variables:
 ```bash
 export TELEGRAM_BOT_TOKEN="your_token_here"
 export TELEGRAM_CHAT_ID="your_chat_id_here"
-# Optional model override (omitted by default; agy manages model selection autonomously)
-# export AGY_MODEL="gemini-2.5-pro"
+# Optional model and effort override (omitted by default; agy manages selection autonomously)
+# export AGY__MODEL="gemini-3.8-flash-high"
+# export AGY__EFFORT="high"
 export MCP_CONFIG_PATH="$HOME/.gemini/config/mcp_config.json"
 ```
 

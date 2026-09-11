@@ -5,7 +5,13 @@ import shutil
 import tempfile
 from typing import Any
 
-from telegram import Message, Update, constants
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    Update,
+    constants,
+)
 from telegram.ext import ContextTypes
 
 from jarvis_antigravity_agent.agent_manager import SubagentManager
@@ -30,6 +36,31 @@ from jarvis_antigravity_agent.updater import (
 from jarvis_antigravity_agent.utils import send_reply_chunks
 
 logger = logging.getLogger(Constants.LOGGER_NAME)
+
+
+def _find_gemini_model(query: str) -> dict[str, Any] | None:
+    """Find matching model definition from query string."""
+    q = query.strip().lower()
+    for m in Constants.GEMINI_MODELS:
+        model_dict: dict[str, Any] = dict(m)
+        m_id = str(model_dict["id"])
+        m_name = str(model_dict["name"]).lower()
+        if q == m_id or q == m_name:
+            return model_dict
+        if q.startswith(m_id) or m_id.startswith(q) or q in m_id:
+            return model_dict
+        version = m_id.replace("gemini-", "").replace("-flash", "").replace("-pro", "")
+        if q in {version, f"flash-{version}", f"pro-{version}"}:
+            return model_dict
+    return None
+
+
+def _resolve_model_name(model_id: str) -> str:
+    """Resolve a user-friendly display name for a model ID."""
+    for m in Constants.GEMINI_MODELS:
+        if model_id == m["id"] or model_id.startswith(m["id"]):
+            return str(m["name"])
+    return model_id
 
 
 class BotHandlers:
@@ -200,8 +231,21 @@ class BotHandlers:
         except Exception as e:
             logger.debug("Failed to inspect system metrics: %s", e)
 
+        active_model = (
+            self._state.get(Constants.STATE_KEY_MODEL)
+            or self._cfg.get("model")
+            or "Autonomous (Default)"
+        )
+        active_effort = (
+            self._state.get(Constants.STATE_KEY_EFFORT)
+            or self._cfg.get("effort")
+            or "Auto / Default"
+        )
+
         msg = Messages.SYSTEM_STATUS.format(
             agy_status=agy_status,
+            model=active_model,
+            effort=active_effort,
             session_status=session_status,
             stt_status=stt_status_label(),
             working_dir=self._cfg["working_dir"],
@@ -497,3 +541,457 @@ class BotHandlers:
             msg = f"✅ *System is Up to Date*\n\nCurrent version: `{local_sha}`"
 
         await update.message.reply_text(msg, parse_mode=constants.ParseMode.MARKDOWN)
+
+    async def model_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            await update.message.reply_text(Messages.UNAUTHORIZED_ACCESS)
+            return
+
+        args = context.args or []
+        if not args:
+            current_model = (
+                self._state.get(Constants.STATE_KEY_MODEL)
+                or self._cfg.get("model")
+                or "Autonomous (Default)"
+            )
+            current_effort = (
+                self._state.get(Constants.STATE_KEY_EFFORT)
+                or self._cfg.get("effort")
+                or "Auto / Default"
+            )
+            text = Messages.MODEL_MENU_TITLE.format(
+                model=current_model, effort=current_effort
+            )
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        f"✨ {m['name']}",
+                        callback_data=f"model:family:{m['id']}",
+                    )
+                ]
+                for m in Constants.GEMINI_MODELS
+            ]
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "⚡ Reset to Autonomous Default",
+                        callback_data="model:reset",
+                    )
+                ]
+            )
+            await update.message.reply_text(
+                text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        subcmd = args[0].lower()
+        if subcmd in {"list", "ls"}:
+            lines = ["🧠 *Available Gemini Models & Reasoning Efforts:*\n"]
+            for m in Constants.GEMINI_MODELS:
+                efforts_str = ", ".join(f"`{e}`" for e in m["efforts"])
+                lines.append(f"• *{m['name']}* (`{m['id']}`)")
+                lines.append(f"  _{m['description']}_")
+                lines.append(f"  Efforts: {efforts_str}\n")
+            lines.append("ℹ️ _Use `/model <name> [effort]` to switch directly._")
+            await send_reply_chunks(update, "\n".join(lines))
+            return
+
+        if subcmd in {"status", "current", "info"}:
+            current_model = (
+                self._state.get(Constants.STATE_KEY_MODEL)
+                or self._cfg.get("model")
+                or "Autonomous (Default)"
+            )
+            current_effort = (
+                self._state.get(Constants.STATE_KEY_EFFORT)
+                or self._cfg.get("effort")
+                or "Auto / Default"
+            )
+            name = _resolve_model_name(str(current_model))
+            msg = (
+                f"🧠 *Current Gemini Model Configuration*\n\n"
+                f"• *Model*: `{current_model}` ({name})\n"
+                f"• *Reasoning Effort*: `{current_effort}`\n"
+            )
+            await update.message.reply_text(
+                msg, parse_mode=constants.ParseMode.MARKDOWN
+            )
+            return
+
+        if subcmd in {"reset", "default", "auto", "clear"}:
+            self._state[Constants.STATE_KEY_MODEL] = None
+            self._state[Constants.STATE_KEY_EFFORT] = None
+            save_state(self._state)
+            self._cfg["model"] = None
+            self._cfg["effort"] = None
+            await update.message.reply_text(
+                Messages.MODEL_RESET_SUCCESS,
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        target_model_query = args[0]
+        target_effort = args[1].lower() if len(args) > 1 else None
+
+        matched_model = None
+        matched_effort = None
+        for m in Constants.GEMINI_MODELS:
+            if target_model_query.lower() == m["id"]:
+                matched_model = m
+                break
+            for eff in m["efforts"]:
+                if target_model_query.lower() == f"{m['id']}-{eff}":
+                    matched_model = m
+                    matched_effort = eff
+                    break
+            if matched_model:
+                break
+
+        if not matched_model:
+            matched_model = _find_gemini_model(target_model_query)
+
+        if not matched_model:
+            await update.message.reply_text(
+                f"⚠️ Unknown model `{target_model_query}`.\n\n"
+                + Messages.MODEL_INVALID_USAGE,
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        effective_effort = (
+            target_effort or matched_effort or matched_model["default_effort"]
+        )
+        if (
+            effective_effort
+            and effective_effort not in matched_model["efforts"]
+            and effective_effort not in {"auto", "default"}
+        ):
+            valid_efforts = ", ".join(f"`{e}`" for e in matched_model["efforts"])
+            await update.message.reply_text(
+                (
+                    f"⚠️ Invalid effort `{effective_effort}` for "
+                    f"*{matched_model['name']}*.\nSupported efforts: {valid_efforts}"
+                ),
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        if effective_effort in {"auto", "default"}:
+            effective_model = str(matched_model["id"])
+            effective_effort_stored = None
+        else:
+            effective_model = f"{matched_model['id']}-{effective_effort}"
+            effective_effort_stored = effective_effort
+
+        self._state[Constants.STATE_KEY_MODEL] = effective_model
+        self._state[Constants.STATE_KEY_EFFORT] = effective_effort_stored
+        save_state(self._state)
+        self._cfg["model"] = effective_model
+        self._cfg["effort"] = effective_effort_stored
+
+        await update.message.reply_text(
+            Messages.MODEL_UPDATED_SUCCESS.format(
+                model=effective_model,
+                model_name=matched_model["name"],
+                effort=effective_effort_stored or "Auto / Default",
+            ),
+            parse_mode=constants.ParseMode.MARKDOWN,
+        )
+
+    async def effort_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        if update.effective_user is None or update.message is None:
+            return
+        if not self._is_authorized(update.effective_user.id):
+            await update.message.reply_text(Messages.UNAUTHORIZED_ACCESS)
+            return
+
+        args = context.args or []
+        if not args:
+            current_model_id = (
+                self._state.get(Constants.STATE_KEY_MODEL)
+                or self._cfg.get("model")
+                or "gemini-3.8-flash"
+            )
+            model_info = (
+                _find_gemini_model(str(current_model_id)) or Constants.GEMINI_MODELS[0]
+            )
+            current_effort = (
+                self._state.get(Constants.STATE_KEY_EFFORT)
+                or self._cfg.get("effort")
+                or "Default"
+            )
+
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "🟢 High",
+                        callback_data=f"model:set:{model_info['id']}:high",
+                    ),
+                    InlineKeyboardButton(
+                        "🟡 Medium",
+                        callback_data=f"model:set:{model_info['id']}:medium",
+                    ),
+                    InlineKeyboardButton(
+                        "🔵 Low",
+                        callback_data=f"model:set:{model_info['id']}:low",
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "⚡ Auto / Default",
+                        callback_data=f"model:set:{model_info['id']}:default",
+                    ),
+                    InlineKeyboardButton(
+                        "⬅️ Back to Models", callback_data="model:menu"
+                    ),
+                ],
+            ]
+            await update.message.reply_text(
+                Messages.MODEL_EFFORT_PROMPT.format(
+                    model_name=model_info["name"],
+                    model_id=model_info["id"],
+                    current_effort=current_effort,
+                ),
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        effort_arg = args[0].lower()
+        if effort_arg in {"auto", "default", "reset"}:
+            self._state[Constants.STATE_KEY_EFFORT] = None
+            curr = self._state.get(Constants.STATE_KEY_MODEL)
+            if curr:
+                for eff in ("-high", "-medium", "-low"):
+                    if curr.endswith(eff):
+                        curr = curr[: -len(eff)]
+                        self._state[Constants.STATE_KEY_MODEL] = curr
+                        self._cfg["model"] = curr
+                        break
+            save_state(self._state)
+            self._cfg["effort"] = None
+            await update.message.reply_text(
+                "⚡ *Reasoning effort reset to default.*",
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        if effort_arg in Constants.VALID_EFFORT_LEVELS:
+            curr = (
+                self._state.get(Constants.STATE_KEY_MODEL)
+                or self._cfg.get("model")
+                or "gemini-3.8-flash"
+            )
+            model_info = _find_gemini_model(str(curr))
+            if model_info:
+                if effort_arg in model_info["efforts"]:
+                    new_model = f"{model_info['id']}-{effort_arg}"
+                    self._state[Constants.STATE_KEY_MODEL] = new_model
+                    self._cfg["model"] = new_model
+                else:
+                    valid_efforts = ", ".join(f"`{e}`" for e in model_info["efforts"])
+                    await update.message.reply_text(
+                        (
+                            f"⚠️ Effort `{effort_arg}` is not supported by "
+                            f"{model_info['name']}.\nSupported: {valid_efforts}"
+                        ),
+                        parse_mode=constants.ParseMode.MARKDOWN,
+                    )
+                    return
+            self._state[Constants.STATE_KEY_EFFORT] = effort_arg
+            self._cfg["effort"] = effort_arg
+            save_state(self._state)
+            model_name = model_info["name"] if model_info else str(curr)
+            await update.message.reply_text(
+                f"✅ Reasoning effort set to *{effort_arg}* for *{model_name}*.",
+                parse_mode=constants.ParseMode.MARKDOWN,
+            )
+            return
+
+        await update.message.reply_text(
+            Messages.EFFORT_INVALID_USAGE,
+            parse_mode=constants.ParseMode.MARKDOWN,
+        )
+
+    async def model_callback_handler(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        query = update.callback_query
+        if query is None:
+            return
+
+        user_id = query.from_user.id if query.from_user else 0
+        if not self._is_authorized(user_id):
+            await query.answer("Unauthorized", show_alert=True)
+            return
+
+        await query.answer()
+
+        data = query.data or ""
+        if data == "model:menu":
+            current_model = (
+                self._state.get(Constants.STATE_KEY_MODEL)
+                or self._cfg.get("model")
+                or "Autonomous (Default)"
+            )
+            current_effort = (
+                self._state.get(Constants.STATE_KEY_EFFORT)
+                or self._cfg.get("effort")
+                or "Auto / Default"
+            )
+            text = Messages.MODEL_MENU_TITLE.format(
+                model=current_model, effort=current_effort
+            )
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        f"✨ {m['name']}",
+                        callback_data=f"model:family:{m['id']}",
+                    )
+                ]
+                for m in Constants.GEMINI_MODELS
+            ]
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "⚡ Reset to Autonomous Default",
+                        callback_data="model:reset",
+                    )
+                ]
+            )
+            try:
+                await query.edit_message_text(
+                    text=text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode=constants.ParseMode.MARKDOWN,
+                )
+            except Exception as e:
+                logger.debug("Failed to edit model menu message: %s", e)
+            return
+
+        if data == "model:reset":
+            self._state[Constants.STATE_KEY_MODEL] = None
+            self._state[Constants.STATE_KEY_EFFORT] = None
+            save_state(self._state)
+            self._cfg["model"] = None
+            self._cfg["effort"] = None
+            keyboard = [
+                [InlineKeyboardButton("⚙️ Select Model", callback_data="model:menu")]
+            ]
+            try:
+                await query.edit_message_text(
+                    text=Messages.MODEL_RESET_SUCCESS,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode=constants.ParseMode.MARKDOWN,
+                )
+            except Exception as e:
+                logger.debug("Failed to edit reset message: %s", e)
+            return
+
+        if data.startswith("model:family:"):
+            family_id = data.split(":", 2)[2]
+            model_info = next(
+                (m for m in Constants.GEMINI_MODELS if m["id"] == family_id), None
+            )
+            if not model_info:
+                try:
+                    await query.edit_message_text("⚠️ Model family not found.")
+                except Exception as e:
+                    logger.debug("Failed to edit family not found message: %s", e)
+                return
+
+            current_effort = (
+                self._state.get(Constants.STATE_KEY_EFFORT)
+                or self._cfg.get("effort")
+                or "Default"
+            )
+            keyboard = []
+            row = []
+            for eff in model_info["efforts"]:
+                icon = "🟢" if eff == "high" else ("🟡" if eff == "medium" else "🔵")
+                row.append(
+                    InlineKeyboardButton(
+                        f"{icon} {eff.capitalize()}",
+                        callback_data=f"model:set:{family_id}:{eff}",
+                    )
+                )
+            keyboard.append(row)
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "⚡ Default / Auto",
+                        callback_data=f"model:set:{family_id}:default",
+                    )
+                ]
+            )
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Back to Models",
+                        callback_data="model:menu",
+                    )
+                ]
+            )
+            try:
+                await query.edit_message_text(
+                    text=Messages.MODEL_EFFORT_PROMPT.format(
+                        model_name=model_info["name"],
+                        model_id=model_info["id"],
+                        current_effort=current_effort,
+                    ),
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode=constants.ParseMode.MARKDOWN,
+                )
+            except Exception as e:
+                logger.debug("Failed to edit effort prompt message: %s", e)
+            return
+
+        if data.startswith("model:set:"):
+            parts = data.split(":")
+            if len(parts) < 4:
+                return
+            family_id = parts[2]
+            effort = parts[3]
+
+            model_info = next(
+                (m for m in Constants.GEMINI_MODELS if m["id"] == family_id), None
+            )
+            model_name = model_info["name"] if model_info else family_id
+
+            if effort == "default":
+                effective_model = str(family_id)
+                effective_effort = None
+            else:
+                effective_model = f"{family_id}-{effort}"
+                effective_effort = effort
+
+            self._state[Constants.STATE_KEY_MODEL] = effective_model
+            self._state[Constants.STATE_KEY_EFFORT] = effective_effort
+            save_state(self._state)
+            self._cfg["model"] = effective_model
+            self._cfg["effort"] = effective_effort
+
+            keyboard = [
+                [InlineKeyboardButton("⚙️ Change Model", callback_data="model:menu")]
+            ]
+            try:
+                await query.edit_message_text(
+                    text=Messages.MODEL_UPDATED_SUCCESS.format(
+                        model=effective_model,
+                        model_name=model_name,
+                        effort=effective_effort or "Auto / Default",
+                    ),
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode=constants.ParseMode.MARKDOWN,
+                )
+            except Exception as e:
+                logger.debug("Failed to edit model updated message: %s", e)
+            return

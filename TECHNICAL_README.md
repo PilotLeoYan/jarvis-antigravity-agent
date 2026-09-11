@@ -21,7 +21,8 @@ The daemon initializes an asynchronous long-polling event loop using python-tele
 ### 2.2. Antigravity CLI Execution Engine (executor.py)
 The execution engine acts as the intermediary between the Telegram bridge and the agy binary:
 - Process Invocation: Spawns the agy executable as an asynchronous subprocess (asyncio.create_subprocess_exec).
-- Command-Line Construction: Invokes agy with the autonomous execution flag (--dangerously-skip-permissions), the output format flag (--output-format stream-json), and an optional model flag (--model) specifying the Gemini model variant.
+- Command-Line Construction: Invokes agy with the autonomous execution flag (--dangerously-skip-permissions), the output format flag (--output-format stream-json), the optional model flag (--model), and the reasoning effort flag (--effort).
+- Dynamic Model & Effort Routing: Active model and reasoning effort levels can be switched dynamically via Telegram commands (/model, /effort) or interactive inline keyboards, persisting selections across sessions in state.json.
 - Context Maintenance: If the continue_session flag in state.json is active, the engine appends the continuation flag (-c), instructing agy to retain prior conversation and memory buffers.
 - Stream JSON Processing: The standard output of agy is consumed line by line. Structured JSON events are decoded and processed in real time.
 - Rate-Limited Feedback: Status messages on Telegram are edited dynamically to report progress as tools are invoked, subject to a configurable throttle interval (edit_throttle_seconds) to comply with Telegram API rate limits.
@@ -80,7 +81,7 @@ Settings are managed via Pydantic BaseSettings in config.py, adhering to the fol
 
 ## 5. State Management and Fault Tolerance
 
-- Session State: Maintained in state.json. When an agy execution completes successfully, continue_session is set to true. When the user issues /new, continue_session is set to false, resetting the conversational context.
+- Session & Model State: Maintained in state.json. When an agy execution completes successfully, continue_session is set to true. When the user issues /new, continue_session is set to false, resetting the conversational context. Active model and reasoning effort selections (/model, /effort) are persisted under active_model and active_effort, persisting across system reloads and service restarts.
 - Corrupted State Handling: If state.json is unreadable or malformed, the system falls back to default state parameters rather than aborting.
 - Safety Timeouts: Process execution is bounded by process_timeout (default 360 seconds) and communicate_timeout (default 10 seconds). Exceeding these thresholds terminates the subprocess via SIGKILL and notifies the user.
 - Restart Codes: Return codes -15, -9, 143, and 137 are treated as intentional lifecycle events, alerting the user that the bridge is reloading rather than treating the termination as a fatal failure.
