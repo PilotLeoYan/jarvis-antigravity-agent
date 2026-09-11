@@ -1,12 +1,18 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://python.org)
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot%20API-blue?logo=telegram)](https://core.telegram.org/bots)
+[![Speech-to-Text](https://img.shields.io/badge/STT-faster--whisper%20(int8)-orange)](https://github.com/SYSTRAN/faster-whisper)
+[![Engine](https://img.shields.io/badge/Core-Google%20Antigravity%20CLI-purple)]()
+
 <img align="left" src="assets/jarvis-icon.png" width="175" style="margin-right: 10px;">
 
 <ul id="user-content-toc"><summary><h1>Antigravity Agent 😸+🕷️</h1></summary></ul>
 
-A simple Hermes-Agent copy using Google 
+A simple Hermes-Agent copy using Google
 $\textsf{\textbf{\textcolor{#FF5555}{A}\textcolor{#FF79C6}{n}\textcolor{#BD93F9}{t}\textcolor{#8BE9FD}{i}\textcolor{#50FA7B}{g}\textcolor{#F1FA8C}{r}\textcolor{#FFB86C}{a}\textcolor{#FF5555}{v}\textcolor{#FF79C6}{i}\textcolor{#BD93F9}{t}\textcolor{#8BE9FD}{y}\ \textcolor{#50FA7B}{C}\textcolor{#F1FA8C}{L}\textcolor{#FFB86C}{I}}}$<br>
 as main engine.
 
-⭐️ **Why did I do this project?** Because I’m a broke university student who wants to have my own agent using my [Google One student offer](https://support.google.com/googleone/answer/17422238?hl=en). And because I liked the film *Spider-Man: Brand New Day* and I want my own 24/7 assistant, just like Peter 🕷️. 
+⭐️ **Why did I do this project?** Because I’m a broke university student who wants to have my own agent using my [Google One student offer](https://support.google.com/googleone/answer/17422238?hl=en). And because I liked the film *Spider-Man: Brand New Day* and I want my own 24/7 assistant, just like Peter 🕷️.
 
 **Some features**:
 
@@ -33,7 +39,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-## ⚙️ Configuration 
+## ⚙️ Configuration
 
 Copy the example configuration file:
 
