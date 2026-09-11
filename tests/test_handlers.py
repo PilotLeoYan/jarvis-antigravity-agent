@@ -132,6 +132,8 @@ class TestBotHandlersEnglishCommands:
                 assert "skills" in cmd_names
                 assert "mcps" in cmd_names
                 assert "boost" in cmd_names
+                assert "model" in cmd_names
+                assert "effort" in cmd_names
 
     @pytest.mark.anyio
     async def test_skills_command(self, runtime_cfg, state, mock_update, mock_context):

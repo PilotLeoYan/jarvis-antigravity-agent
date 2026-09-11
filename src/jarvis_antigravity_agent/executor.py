@@ -172,13 +172,22 @@ async def execute_agy_prompt(
     async with process_lock:
         continue_flag = bool(state.get(Constants.STATE_KEY_CONTINUE, False))
 
+        effective_model = state.get(Constants.STATE_KEY_MODEL) or runtime_cfg.get(
+            "model"
+        )
+        effective_effort = state.get(Constants.STATE_KEY_EFFORT) or runtime_cfg.get(
+            "effort"
+        )
+
         cmd = (
             [runtime_cfg["agy_path"]]
             + runtime_cfg["default_flags"]
             + [Constants.AGY_OUTPUT_FORMAT_FLAG, Constants.AGY_OUTPUT_FORMAT]
         )
-        if runtime_cfg.get("model"):
-            cmd.extend([Constants.AGY_MODEL_FLAG, runtime_cfg["model"]])
+        if effective_model:
+            cmd.extend([Constants.AGY_MODEL_FLAG, str(effective_model)])
+        if effective_effort:
+            cmd.extend([Constants.AGY_EFFORT_FLAG, str(effective_effort)])
         if continue_flag:
             cmd.append(Constants.AGY_CONTINUE_FLAG)
         cmd.extend([Constants.AGY_PROMPT_FLAG, prompt])

@@ -45,6 +45,7 @@ class Messages:
         "\U0001f4cb *Quick Commands:*\n"
         "\u2022 `/help` \u2014 Display complete operational guide.\n"
         "\u2022 `/status` \u2014 Inspect system, bridge, and STT status.\n"
+        "\u2022 `/model` \u2014 Select Gemini model & thinking/effort level.\n"
         "\u2022 `/quotas` \u2014 Inspect current AGY model quotas and limits.\n"
         "\u2022 `/skills` \u2014 List all global skills in Antigravity.\n"
         "\u2022 `/mcps` \u2014 List all global MCP servers in Antigravity.\n"
@@ -61,6 +62,8 @@ class Messages:
         "\U0001f4cb *Commands:*\n"
         "\u2022 `/start` \u2014 Display welcome introduction and overview.\n"
         "\u2022 `/new` \u2014 Reset conversational context.\n"
+        "\u2022 `/model` \u2014 Select Gemini model & thinking/effort level.\n"
+        "\u2022 `/effort` \u2014 Set reasoning effort (low, medium, high, auto).\n"
         "\u2022 `/status` \u2014 Inspect system, AGY, and STT status.\n"
         "\u2022 `/quotas` \u2014 Inspect current AGY model quotas and limits.\n"
         "\u2022 `/skills` \u2014 Inspect all global skills in AGY.\n"
@@ -99,6 +102,8 @@ class Messages:
     SYSTEM_STATUS = (
         "\U0001f4ca *System & Bridge Status*\n\n"
         "\u2022 *AGY Status*: {agy_status}\n"
+        "\u2022 *Active Model*: `{model}`\n"
+        "\u2022 *Thinking Effort*: `{effort}`\n"
         "\u2022 *Session*: {session_status}\n"
         "\u2022 *Speech-to-Text*: {stt_status}\n"
         "\u2022 *Working Directory*: `{working_dir}`\n"
@@ -176,4 +181,43 @@ class Messages:
         "• `/mcp` or `/mcp list` — Show registered servers\n"
         "• `/mcp add <name> <command> [args...]` — Add or update server\n"
         "• `/mcp remove <name>` — Remove server"
+    )
+
+    MODEL_MENU_TITLE = (
+        "🧠 *Gemini Model & Thinking Effort Selection*\n\n"
+        "• *Current Model*: `{model}`\n"
+        "• *Reasoning Effort*: `{effort}`\n\n"
+        "Choose a Gemini model family below to adjust or customize reasoning effort:"
+    )
+    MODEL_EFFORT_PROMPT = (
+        "⚡ *Reasoning Effort for {model_name}*\n\n"
+        "• *Model ID*: `{model_id}`\n"
+        "• *Current Effort*: `{current_effort}`\n\n"
+        "Select the thinking / reasoning effort level:"
+    )
+    MODEL_UPDATED_SUCCESS = (
+        "✅ *Model Configuration Updated*\n\n"
+        "• *Model*: `{model}` ({model_name})\n"
+        "• *Reasoning Effort*: `{effort}`\n\n"
+        "Jarvis will use this configuration for subsequent tasks and sessions."
+    )
+    MODEL_RESET_SUCCESS = (
+        "⚡ *Model Reset to Autonomous Default*\n\n"
+        "Dynamic model selection restored. Google Antigravity (`agy`) will manage "
+        "model selection and reasoning effort automatically."
+    )
+    MODEL_INVALID_USAGE = (
+        "ℹ️ *Model Command Usage:*\n"
+        "• `/model` — Open interactive model selection menu\n"
+        "• `/model list` — List all available models and effort options\n"
+        "• `/model status` — Display current model and effort configuration\n"
+        "• `/model reset` or `/model auto` — Reset to autonomous default\n"
+        "• `/model <name> [effort]` — Set model and optional effort directly\n\n"
+        "_Example:_ `/model gemini-3.8-flash high`"
+    )
+    EFFORT_INVALID_USAGE = (
+        "ℹ️ *Effort Command Usage:*\n"
+        "• `/effort` — Open interactive effort selector\n"
+        "• `/effort <low|medium|high|auto>` — Set effort level directly\n\n"
+        "_Example:_ `/effort high`"
     )

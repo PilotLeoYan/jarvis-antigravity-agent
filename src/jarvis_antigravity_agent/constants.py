@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 
 class Constants:
@@ -21,6 +22,8 @@ class Constants:
     AGY_PROMPT_FLAG = "-p"
     AGY_MODEL_FLAG = "--model"
     AGY_DEFAULT_MODEL: str | None = None
+    AGY_EFFORT_FLAG = "--effort"
+    AGY_DEFAULT_EFFORT: str | None = None
     AGY_OUTPUT_FORMAT_FLAG = "--output-format"
     AGY_DEFAULT_FLAGS = ["--dangerously-skip-permissions"]
     AGY_LOCAL_BIN = os.path.expanduser("~/.local/bin")
@@ -42,4 +45,38 @@ class Constants:
     PLACEHOLDER_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE"  # noqa: S105
     DEFAULT_WORKING_DIR = os.path.expanduser("~")
     STATE_KEY_CONTINUE = "continue_session"
+    STATE_KEY_MODEL = "active_model"
+    STATE_KEY_EFFORT = "active_effort"
     EMPTY_RESPONSE_PLACEHOLDER = "(Empty response)"
+
+    VALID_EFFORT_LEVELS: tuple[str, ...] = ("low", "medium", "high")
+    GEMINI_MODELS: list[dict[str, Any]] = [
+        {
+            "id": "gemini-3.8-flash",
+            "name": "Gemini 3.8 Flash",
+            "description": "Fast, multimodal, frontier intelligence",
+            "efforts": ["high", "medium", "low"],
+            "default_effort": "high",
+        },
+        {
+            "id": "gemini-3.7-flash",
+            "name": "Gemini 3.7 Flash",
+            "description": "Hybrid reasoning & low-latency execution",
+            "efforts": ["high", "medium", "low"],
+            "default_effort": "high",
+        },
+        {
+            "id": "gemini-3.6-flash",
+            "name": "Gemini 3.6 Flash",
+            "description": "Reliable high-throughput daily coding & tools",
+            "efforts": ["high", "medium", "low"],
+            "default_effort": "high",
+        },
+        {
+            "id": "gemini-3.1-pro",
+            "name": "Gemini 3.1 Pro",
+            "description": "Deep architectural reasoning & complex tasks",
+            "efforts": ["high", "low"],
+            "default_effort": "high",
+        },
+    ]

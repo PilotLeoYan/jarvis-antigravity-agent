@@ -96,6 +96,7 @@ class SubagentManager:
         chat_id: int | str | None = None,
         working_dir: str | None = None,
         model: str | None = None,
+        effort: str | None = None,
         timeout: float = Constants.AGY_PROCESS_TIMEOUT,
     ) -> SubagentInfo:
         short_id = uuid.uuid4().hex[:8]
@@ -114,6 +115,7 @@ class SubagentManager:
             "working_dir", Constants.DEFAULT_WORKING_DIR
         )
         target_model = model or runtime_cfg.get("model")
+        target_effort = effort or runtime_cfg.get("effort")
         agy_path = (
             runtime_cfg.get("agy_path")
             or shutil.which("agy")
@@ -141,6 +143,8 @@ class SubagentManager:
         ]
         if target_model:
             cmd.extend([Constants.AGY_MODEL_FLAG, target_model])
+        if target_effort:
+            cmd.extend([Constants.AGY_EFFORT_FLAG, target_effort])
         cmd.extend([Constants.AGY_PROMPT_FLAG, prompt])
 
         task = asyncio.create_task(
@@ -154,10 +158,11 @@ class SubagentManager:
         )
         self._tasks[agent_id] = task
         logger.info(
-            "Spawned autonomous subagent %s (%s) with model %s",
+            "Spawned autonomous subagent %s (%s) with model %s (effort %s)",
             agent_id,
             agent_name,
             target_model,
+            target_effort,
         )
         return agent_info
 
@@ -369,6 +374,13 @@ def main_cli() -> None:
         "--model", "-m", default=None, help="Specific model override for agy"
     )
     parser.add_argument(
+        "--effort",
+        "-e",
+        default=None,
+        choices=["low", "medium", "high"],
+        help="Reasoning effort level for agy (low|medium|high)",
+    )
+    parser.add_argument(
         "--timeout",
         "-t",
         type=float,
@@ -391,6 +403,7 @@ def main_cli() -> None:
             chat_id=args.chat_id,
             working_dir=args.working_dir,
             model=args.model,
+            effort=args.effort,
             timeout=args.timeout,
         )
         print(f"Spawned subagent '{agent.name}' (ID: {agent.agent_id})")
@@ -424,6 +437,8 @@ def main_cli() -> None:
             cmd.extend(["--working-dir", args.working_dir])
         if args.model:
             cmd.extend(["--model", args.model])
+        if args.effort:
+            cmd.extend(["--effort", args.effort])
         if args.timeout:
             cmd.extend(["--timeout", str(args.timeout)])
 
