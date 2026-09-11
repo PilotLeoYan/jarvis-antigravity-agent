@@ -1,63 +1,34 @@
-<p align="center">
-  <img src="assets/jarvis-icon.png" alt="Jarvis Antigravity Agent Logo" width="160" />
-</p>
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://python.org)
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot%20API-blue?logo=telegram)](https://core.telegram.org/bots)
+[![Speech-to-Text](https://img.shields.io/badge/STT-faster--whisper%20(int8)-orange)](https://github.com/SYSTRAN/faster-whisper)
+[![Engine](https://img.shields.io/badge/Core-Google%20Antigravity%20CLI-purple)]()
 
-# Jarvis Antigravity Agent
+<img align="left" src="assets/jarvis-icon.png" width="175" style="margin-right: 10px;">
 
-## What is the Project?
+<ul id="user-content-toc"><summary><h1>Antigravity Agent 😸+🕷️</h1></summary></ul>
 
-**Jarvis Antigravity Agent** is an autonomous AI assistant inspired by the architecture of Hermes-Agent, powered exclusively by **Google Antigravity CLI (`agy`)** as its reasoning engine.
+A simple Hermes-Agent copy using Google
+$\textsf{\textbf{\textcolor{#FF5555}{A}\textcolor{#FF79C6}{n}\textcolor{#BD93F9}{t}\textcolor{#8BE9FD}{i}\textcolor{#50FA7B}{g}\textcolor{#F1FA8C}{r}\textcolor{#FFB86C}{a}\textcolor{#FF5555}{v}\textcolor{#FF79C6}{i}\textcolor{#BD93F9}{t}\textcolor{#8BE9FD}{y}\ \textcolor{#50FA7B}{C}\textcolor{#F1FA8C}{L}\textcolor{#FFB86C}{I}}}$<br>
+as main engine.
 
-The system connects the local execution capabilities of `agy` to **Telegram** via an outbound HTTPS long-polling bridge. It includes private offline speech-to-text transcription via local Whisper, autonomous background subagent dispatching, Model Context Protocol (MCP) tool management, and an automated continuous self-updating mechanism that keeps running instances up to date without overwriting local configurations or personal files.
+⭐️ **Why did I do this project?** Because I’m a broke university student who wants to have my own agent using my [Google One student offer](https://support.google.com/googleone/answer/17422238?hl=en). And because I liked the film *Spider-Man: Brand New Day* and I want my own 24/7 assistant, just like Peter 🕷️.
 
----
+**Some features**:
 
-## How It Works
++ 💬 Use of $\textsf{\textbf{\textcolor{#24A1DE}{Telegram}}}$
++ 🗣️ Local speech-to-text
++ 🧠 Power of **AGY**
 
-```mermaid
-flowchart TD
-    User([Telegram User]) <-->|Text & Voice Notes| TGServers[Telegram Bot API Servers]
-    TGServers <-->|Outbound HTTPS Long Polling| Bridge[Jarvis Telegram Bridge Daemon]
-
-    subgraph Jarvis Host Engine
-        Bridge -->|Voice Audio .oga| STT[faster-whisper Offline STT]
-        STT -->|Transcribed Text| Bridge
-
-        Bridge -->|Prompt & Flags| AGY[Google Antigravity CLI 'agy']
-        AGY -->|stream-json events| StreamParser[Streaming Event Parser]
-        StreamParser -->|Progress & Status Edits| Bridge
-
-        AGY -->|Execute Tool| Tools{Execution Engine}
-        Tools -->|Filesystem & Shell| HostSys[Host Operating System]
-        Tools -->|MCP Protocol| MCPServers[MCP Servers: Context7, GitHub, etc.]
-
-        Bridge -.->|/boost & /spawn| SubagentMgr[Autonomous Subagent Manager]
-        SubagentMgr -->|Background agy process| DetachedAgent[Detached Subagent Task]
-        DetachedAgent -->|Completion Alert| Notifier[jarvis-send-message CLI]
-        Notifier -->|Telegram API| TGServers
-
-        Bridge -.->|/update| Updater[Safe Self-Updater]
-        Updater -->|git fetch & ff-merge| GitHubRepo[GitHub Remote Repository]
-        Updater -->|uv sync & restart| Bridge
-    end
-```
-
----
-
-## Installation
-
-### Prerequisites
+## ✅️ Prerequisites
 
 - **Linux OS** (Ubuntu 22.04+ or Debian-based distribution recommended)
 - **Python 3.10+**
 - **uv** package manager (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
-- **Google Antigravity CLI (`agy`)** installed and authenticated in `~/.local/bin` or available in `PATH`
-- **ffmpeg** (required for processing Telegram voice notes):
-  ```bash
-  sudo apt install ffmpeg
-  ```
+- **Google Antigravity CLI (`agy`):** installed and authenticated in `~/.local/bin` or available in `PATH`. [Install here](https://antigravity.google/product/antigravity-cli)
+- **ffmpeg** (required for processing Telegram voice notes): `sudo apt install ffmpeg`
 
-### Automated Setup
+## ⤵️ Installation
 
 Clone the repository and run the automated setup script:
 
@@ -68,46 +39,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-### Manual Installation
-
-If you prefer installing dependencies manually with `uv`:
-
-```bash
-uv sync
-```
-
-To link the executable entrypoints (`jarvis-antigravity-agent`, `jarvis-send-message`, etc.) into `~/.local/bin`:
-
-```bash
-make install
-# Or manually create symlinks and copy skills:
-mkdir -p ~/.local/bin
-ln -sf "$(pwd)/.venv/bin/jarvis-antigravity-agent" ~/.local/bin/
-ln -sf "$(pwd)/.venv/bin/jarvis-send-message" ~/.local/bin/
-ln -sf "$(pwd)/.venv/bin/jarvis-spawn-agent" ~/.local/bin/
-ln -sf "$(pwd)/.venv/bin/jarvis-mcp" ~/.local/bin/
-ln -sf "$(pwd)/.venv/bin/jarvis-update" ~/.local/bin/
-ln -sf "$(pwd)/.venv/bin/jarvis-uninstall" ~/.local/bin/
-
-# Copy custom skills into standard AGY user skills locations:
-mkdir -p ~/.gemini/config/skills ~/.agents/skills
-cp -r skills/* ~/.gemini/config/skills/
-cp -r skills/* ~/.agents/skills/
-```
-
-This ensures the entrypoints are accessible in your `$PATH` and available for the systemd service daemon:
-- `jarvis-antigravity-agent` (Telegram bridge daemon)
-- `jarvis-send-message` (CLI alert notifier)
-- `jarvis-spawn-agent` (autonomous subagent runner)
-- `jarvis-mcp` (MCP server manager)
-- `jarvis-update` (safe self-updater)
-- `jarvis-uninstall` (safe uninstaller)
-
----
-
-## Configuration
-
-### 1. Configuration File (`config.yaml`)
+## ⚙️ Configuration
 
 Copy the example configuration file:
 
@@ -115,59 +47,13 @@ Copy the example configuration file:
 cp config.example.yaml config.yaml
 ```
 
-Edit `config.yaml` to specify your Telegram Bot token and authorized user ID:
+Edit `config.yaml` to specify:
 
-```yaml
-telegram:
-  # Bot token obtained from @BotFather
-  bot_token: "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-  # Allowed Telegram user IDs (whitelist)
-  allowed_users:
-    - 123456789
-  # Default Chat ID for notifications
-  default_chat_id: 123456789
++ Telegram Bot token: `bot_token: "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"`
++ Authorized users IDs: `allowed_users: - 123456789`
++ Working directory: `working_dir: "/home/username"`
 
-agy:
-  # Working directory where agy commands execute
-  working_dir: "/home/username"
-  # Path to the agy binary
-  agy_path: "agy"
-  # Flags passed to agy for autonomous execution
-  default_flags:
-    - "--dangerously-skip-permissions"
-  # Optional model override (can also be selected interactively in Telegram via /model)
-  # model: "gemini-3.8-flash-high"
-  # Optional reasoning effort override: "low", "medium", "high" (or /effort in Telegram)
-  # effort: "high"
-
-whisper:
-  model_size: "base"
-  device: "cpu"
-  compute_type: "int8"
-
-mcp:
-  config_path: "~/.gemini/config/mcp_config.json"
-
-update:
-  remote: "origin"
-  branch: "main"
-  auto_restart: true
-```
-
-### 2. Environment Variables (Alternative)
-
-Key parameters can also be configured via environment variables:
-
-```bash
-export TELEGRAM_BOT_TOKEN="your_token_here"
-export TELEGRAM_CHAT_ID="your_chat_id_here"
-# Optional model and effort override (omitted by default; agy manages selection autonomously)
-# export AGY__MODEL="gemini-3.8-flash-high"
-# export AGY__EFFORT="high"
-export MCP_CONFIG_PATH="$HOME/.gemini/config/mcp_config.json"
-```
-
-### 3. Running as a Systemd Service
+## 🔄 Running as a Systemd Service
 
 When using the automated installer (`./setup.sh`), the service file is automatically copied to `~/.config/systemd/user/agy-telegram.service` and the required entrypoint binaries are linked into `~/.local/bin/`.
 
@@ -184,59 +70,34 @@ systemctl --user restart agy-telegram.service
 systemctl --user status agy-telegram.service
 ```
 
-If configuring manually without `setup.sh`:
-
-```bash
-mkdir -p ~/.config/systemd/user
-cp systemd/agy-telegram.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now agy-telegram.service
-```
-
 Inspect service logs with:
 
 ```bash
 journalctl --user -u agy-telegram.service -f
 ```
 
-#### Troubleshooting: `status=203/EXEC` (No such file or directory)
-
-If `agy-telegram.service` exits with `code=exited, status=203/EXEC`:
-```text
-agy-telegram.service: Failed to locate executable ~/.local/bin/jarvis-antigravity-agent: No such file or directory
-agy-telegram.service: Failed at step EXEC spawning ~/.local/bin/jarvis-antigravity-agent: No such file or directory
-```
-This indicates the executable link in `~/.local/bin/` is missing or unlinked. Fix it by running:
-```bash
-./setup.sh
-# or
-make install
-```
-Both `./setup.sh` and `make install` automatically:
-1. Synchronize project dependencies into the virtual environment (`.venv/bin`).
-2. Symlink all CLI entrypoints into `~/.local/bin/` and apply executable permissions (`chmod +x`).
-3. Deploy `systemd/agy-telegram.service` to `~/.config/systemd/user/agy-telegram.service` with start burst rate limiting (`StartLimitIntervalSec=300`, `StartLimitBurst=5`) and `RestartPreventExitStatus=203` to prevent runaway restart loops if the executable is ever missing.
-4. Reload the user systemd daemon (`systemctl --user daemon-reload`).
-5. Copy custom skills (`telegram-formatting`, `agent-dispatch`, `mcp-management`, etc.) to standard Antigravity user skills directories (`~/.gemini/config/skills` and `~/.agents/skills`) ensuring automatic discovery and prompt injection across sessions.
-6. Deploy cognitive rules (`SOUL.md` / `AGENTS.md`) and persistent memory templates to standard Antigravity rules directories (`~/.gemini/config/rules/` and `~/.agents/rules/`), kept in continuous sync on startup so Jarvis reliably maintains its persona, guidelines, and memory.
-
----
-
-## Uninstallation & Cleanup
+## 🚮 Uninstallation & Cleanup
 
 To stop the background daemon and safely uninstall the agent:
 
-```bash
-# Interactive uninstaller (prompts for confirmation)
+```bass
 ./uninstall.sh
-
-# Or via installed CLI entrypoint
-jarvis-uninstall
 ```
 
-### Cleanup Flags:
 - `--purge-personal`: Removes personal configuration files (`config.yaml`), `state.json`, credentials, and voice caches.
 - `--purge-agy`: Removes Google Antigravity application data (`~/.gemini`, `~/.agents`, `~/.config/Antigravity`).
 - `--all`: Completely removes the systemd daemon, personal files, and all AGY data.
 - `--dry-run`: Simulates the uninstallation without making any filesystem or daemon changes.
 - `-y`, `--yes`: Non-interactive mode (proceed without confirmation prompts).
+
+## 🎟️ Contribution
+
+I’m just a student who undertook this project because I’ve got a lot on my plate; any [☉ Issues](https://github.com/PilotLeoYan/jarvis-antigravity-agent/issues) or [🔃 PRs](https://github.com/PilotLeoYan/jarvis-antigravity-agent/pulls) are welcome.
+
+<a href="https://www.star-history.com/?repos=pilotleoyan%2Fjarvis-antigravity-agent&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=pilotleoyan/jarvis-antigravity-agent&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=pilotleoyan/jarvis-antigravity-agent&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=pilotleoyan/jarvis-antigravity-agent&type=date&legend=top-left" />
+ </picture>
+</a>
