@@ -8,17 +8,16 @@
 
 <ul id="user-content-toc"><summary><h1>Antigravity Agent 😸+🕷️</h1></summary></ul>
 
-A simple Hermes-Agent copy using Google
-$\textsf{\textbf{\textcolor{#FF5555}{A}\textcolor{#FF79C6}{n}\textcolor{#BD93F9}{t}\textcolor{#8BE9FD}{i}\textcolor{#50FA7B}{g}\textcolor{#F1FA8C}{r}\textcolor{#FFB86C}{a}\textcolor{#FF5555}{v}\textcolor{#FF79C6}{i}\textcolor{#BD93F9}{t}\textcolor{#8BE9FD}{y}\ \textcolor{#50FA7B}{C}\textcolor{#F1FA8C}{L}\textcolor{#FFB86C}{I}}}$<br>
+A simple Hermes-Agent copy using **Google Antigravity CLI**<br>
 as main engine.
 
 <br>⭐️ **Why did I do this project?** Because I’m a broke university student who wants to have my own agent using my [Google One student offer](https://support.google.com/googleone/answer/17422238?hl=en). And because I liked the film *Spider-Man: Brand New Day* and I want my own 24/7 assistant, just like Peter 🕷️.
 
 **Some features**:
 
-+ 💬 Use of $\textsf{\textbf{\textcolor{#24A1DE}{Telegram}}}$
++ 💬 Use of Telegram
 + 🗣️ Local speech-to-text
-+ 🧠 Power of **AGY**
++ 🧠 Power of AGY
 
 ## ✅️ Prerequisites
 
