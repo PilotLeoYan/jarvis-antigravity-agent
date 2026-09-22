@@ -1,3 +1,14 @@
+> [!CAUTION]
+> **IMPORTANT COMPLIANCE & RESEARCH NOTICE**
+>
+> This project was developed strictly as an educational and architectural exploration of event-driven agent IPC, streaming output processing, and headless developer tooling.
+>
+> **Terms of Service Considerations:**
+> In accordance with Section 108 of the [Google Antigravity Additional Terms of Service](https://antigravity.google/terms) and official policies clarified in [Gemini CLI Discussion #20632](https://github.com/google-gemini/gemini-cli/discussions/20632), connecting third-party bridges or unofficial daemon harnesses to consumer-subsidized Antigravity/Gemini CLI OAuth tokens is strictly restricted and subject to automated abuse enforcement (Two-Strike account suspension policy).
+>
+> + **Production Recommendation:** For production bots, continuous automations, or third-party integrations, users should decouple from consumer CLI sessions and exclusively employ official metered endpoints such as **Google AI Studio (Gemini API Keys)** or **Google Cloud Vertex AI**, which explicitly permit automated client access.
+> + The author assumes no responsibility for account suspensions resulting from deployment on non-metered personal accounts.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://python.org)
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot%20API-blue?logo=telegram)](https://core.telegram.org/bots)
@@ -11,7 +22,7 @@
 A simple Hermes-Agent copy using **Google Antigravity CLI**<br>
 as main engine.
 
-<br>⭐️ **Why did I do this project?** Because I’m a broke university student who wants to have my own agent using my [Google One student offer](https://support.google.com/googleone/answer/17422238?hl=en). And because I liked the film *Spider-Man: Brand New Day* and I want my own 24/7 assistant, just like Peter 🕷️.
+<br>⭐️ **Why did I do this project?** Inspired by Peter Parker’s autonomous assistant in Spider-Man 🕷️, I wanted to explore the systems engineering behind building an always-available, local-first agent bridge combining speech recognition, headless CLI interaction, and Linux system services.
 
 **Some features**:
 
@@ -79,7 +90,7 @@ journalctl --user -u agy-telegram.service -f
 
 To stop the background daemon and safely uninstall the agent:
 
-```bass
+```bash
 ./uninstall.sh
 ```
 
